@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ user.username }} | Profile</title>
+</head>
+<body>
+
+<!-- ================= USER INFO ================= -->
+<h1>{{ user.username }}</h1>
+<p>Email: {{ user.email }}</p>
+
+{% if user.linkedin_url %}
+<p>LinkedIn:
+    <a href="{{ user.linkedin_url }}" target="_blank">
+        {{ user.linkedin_url }}
+    </a>
+</p>
+{% endif %}
+
+{% if user.portfolio_url %}
+<p>Portfolio:
+    <a href="{{ user.portfolio_url }}" target="_blank">
+        {{ user.portfolio_url }}
+    </a>
+</p>
+{% endif %}
+
+<hr>
+
+<!-- ================= GITHUB ================= -->
+<h2>GitHub</h2>
+
+{% if github %}
+<p>Username: {{ github.github_username }}</p>
+<p>Followers: {{ github.followers }}</p>
+<p>Following: {{ github.following }}</p>
+<p>Account Age: {{ github.account_age_days }} days</p>
+
+<h3>Developer Score</h3>
+<ul>
+    <li>Consistency: {{ github.developer_score.consistency }}</li>
+    <li>Depth: {{ github.developer_score.depth }}</li>
+    <li>Impact: {{ github.developer_score.impact }}</li>
+    <li>Overall: {{ github.developer_score.overall }}</li>
+</ul>
+<h3>Projects</h3>
+
+{% if github.repo_quality %}
+<table border="1">
+    <tr>
+        <th>Project</th>
+        <th>Status</th>
+        <th>Stars</th>
+        <th>Forks</th>
+        <th>Last Activity (days)</th>
+        <th>Link</th>
+    </tr>
+
+    {% for repo in github.repo_quality %}
+    <tr>
+        <td>{{ repo.name }}</td>
+        <td>{{ repo.status }}</td>
+        <td>{{ repo.stars }}</td>
+        <td>{{ repo.forks }}</td>
+        <td>{{ repo.last_push_days_ago }}</td>
+        <td>
+            <a href="{{ repo.repo_url }}" target="_blank">View</a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No projects found.</p>
+{% endif %}
+
+<h3>Language Proficiency</h3>
+
+{% if github.language_intelligence %}
+<table border="1">
+    <tr>
+        <th>Language</th>
+        <th>Repos</th>
+        <th>Active Repos</th>
+        <th>Avg Active Days</th>
+        <th>Proficiency</th>
+        <th>Level</th>
+    </tr>
+    {% for lang, info in github.language_intelligence.items() %}
+    <tr>
+        <td>{{ lang }}</td>
+        <td>{{ info.repos }}</td>
+        <td>{{ info.active_repos }}</td>
+        <td>{{ info.avg_active_days }}</td>
+        <td>{{ info.proficiency }}</td>
+        <td>{{ info.level }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No language data available.</p>
+{% endif %}
+
+<h3>Activity Summary</h3>
+<ul>
+    <li>Total Repositories: {{ github.activity_summary.total_repos }}</li>
+    <li>Active Repositories: {{ github.activity_summary.active_repos }}</li>
+    <li>Dead Repositories: {{ github.activity_summary.dead_repos }}</li>
+    <li>Average Repo Lifespan (days): {{ github.activity_summary.avg_repo_lifespan_days }}</li>
+    <li>Last Activity (days ago): {{ github.activity_summary.last_activity_days_ago }}</li>
+</ul>
+
+{% else %}
+<p>GitHub data not synced yet.</p>
+{% endif %}
+
+<hr>
+
+<!-- ================= COMPETITIVE PROGRAMMING ================= -->
+<h2>Competitive Programming</h2>
+
+<h3>LeetCode</h3>
+{% if leetcode %}
+<pre>{{ leetcode }}</pre>
+{% else %}
+<p>LeetCode not connected.</p>
+{% endif %}
+
+<h3>Codeforces</h3>
+{% if codeforces %}
+<pre>{{ codeforces }}</pre>
+{% else %}
+<p>Codeforces not connected.</p>
+{% endif %}
+
+<h3>CodeChef</h3>
+{% if codechef %}
+<pre>{{ codechef }}</pre>
+{% else %}
+<p>CodeChef not connected.</p>
+{% endif %}
+
+<h3>HackerRank</h3>
+{% if hackerrank %}
+<pre>{{ hackerrank }}</pre>
+{% else %}
+<p>HackerRank not connected.</p>
+{% endif %}
+
+<hr>
+
+<a href="{{ url_for('auth.logout') }}">Logout</a>
+</body>
+</html>

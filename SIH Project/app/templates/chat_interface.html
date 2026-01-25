@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messaging Dashboard</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='css/Message.css')}}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        .hidden {
+            display: none !important;
+        }
+
+        .typing-indicator {
+            font-size: 12px;
+            color: var(--online-status);
+            margin-left: 10px;
+            font-style: italic;
+        }
+
+        /* Typing indicator in message area */
+        .message-typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background-color: var(--sender-bubble);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            max-width: 60px;
+            margin-bottom: 10px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #999;
+            animation: typingAnimation 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingAnimation {
+
+            0%,
+            60%,
+            100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+
+            30% {
+                opacity: 1;
+                transform: translateY(-10px);
+            }
+        }
+
+        .messages-container {
+            scroll-behavior: smooth;
+        }
+
+        #right-profile-sidebar {
+            display: none;
+        }
+
+        .badge {
+            background-color: #ff3b30;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Search Bar Styles */
+        .search-container {
+            padding: 10px 0;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px 8px 30px;
+            border-radius: 20px;
+            border: 1px solid #e4e6eb;
+            background: #f0f2f5;
+            outline: none;
+            font-size: 13px;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #65676b;
+            font-size: 12px;
+        }
+
+        /* Emoji Picker */
+        .emoji-picker {
+            position: absolute;
+            bottom: 60px;
+            left: 20px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+        }
+
+        .emoji-item {
+            cursor: pointer;
+            font-size: 20px;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .emoji-item:hover {
+            background: #f0f2f5;
+            border-radius: 4px;
+        }
+
+        /* Clickable Header */
+        .chat-header {
+            cursor: pointer;
+        }
+
+        .chat-header:hover {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app-container profile-hidden">
+        <!-- 1. Navigation Sidebar -->
+        <!-- 1. Navigation Sidebar -->
+        <aside class="nav-sidebar" id="main-nav-sidebar">
+            <div class="nav-top">
+                <div class="nav-icon" onclick="toggleSidebar()" style="margin-bottom: 20px;"><i
+                        class="fa-solid fa-bars"></i><span class="nav-label">Menu</span></div>
+
+                <a href="{{ url_for('home.home') }}" class="nav-icon" data-tooltip="Home"><i
+                        class="fas fa-home"></i><span class="nav-label">Home</span></a>
+                <a href="#" class="nav-icon" data-tooltip="Courses"><i class="fas fa-graduation-cap"></i><span
+                        class="nav-label">Courses</span></a>
+                <a href="{{ url_for('message.message_home') }}" class="nav-icon active" data-tooltip="Messages"><i
+                        class="fas fa-comment-dots"></i><span class="nav-label">Messages</span></a>
+                <a href="#" class="nav-icon" data-tooltip="Meeting"><i class="fas fa-video"></i><span
+                        class="nav-label">Meeting</span></a>
+                <a href="#" class="nav-icon" data-tooltip="Events"><i class="fas fa-calendar-alt"></i><span
+                        class="nav-label">Events</span></a>
+                <a href="#" class="nav-icon" data-tooltip="Membership"><i class="fas fa-id-card"></i><span
+                        class="nav-label">Membership</span></a>
+                <a href="#" class="nav-icon" data-tooltip="AI Tools"><i class="fas fa-robot"></i><span
+                        class="nav-label">AI Tools</span></a>
+
+                <!-- Gap Separator (Match Home) -->
+                <div class="nav-icon menu-separator"
+                    style="height: 20px; cursor: default; opacity: 0; pointer-events: none;"></div>
+            </div>
+            <div class="nav-bottom">
+                <!-- Bottom Icons -->
+                <a href="#" class="nav-icon" data-tooltip="Alumni Club"><i class="fas fa-users"></i><span
+                        class="nav-label">Alumni Club</span></a>
+                <a href="#" class="nav-icon" data-tooltip="Notifications"><i class="fas fa-bell"></i><span
+                        class="nav-label">Notifications</span></a>
+
+                <!-- User Avatar -->
+                <div class="nav-icon profile-section" style="opacity:1;">
+                    <img src="{{ url_for('static', filename='images/avatar_3d.png') }}" class="nav-profile-img"
+                        alt="Profile"
+                        style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,0.2);">
+                    <span class="nav-label" style="font-size:12px; margin-left:10px;">{{ username }}</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 2. Message List Panel -->
+        <aside class="message-list-panel">
+            <div class="panel-header">
+                <div class="panel-title">Messages</div>
+                <div class="panel-actions">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-container">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="user-search" class="search-input" placeholder="Search user...">
+            </div>
+
+            <!-- Online Now -->
+            <div class="section-header">
+                <div class="section-title"><i class="fa-solid fa-circle-check"
+                        style="color:var(--online-status); margin-right:5px;"></i> Online Now</div>
+            </div>
+            <div class="online-users-row" id="online-users-list">
+                <!-- Javascript will populate this -->
+            </div>
+
+            <!-- Active Chats -->
+            <div class="section-header" style="margin-top: 20px;">
+                <div class="section-title"><i class="fa-solid fa-comments" style="margin-right:5px;"></i> Active Chats
+                </div>
+            </div>
+            <div class="chat-list" id="active-chat-list">
+                <!-- Javascript will populate this -->
+            </div>
+        </aside>
+
+        <!-- 3. Main Chat Area -->
+        <main class="chat-main-area">
+            <!-- Empty State -->
+            <div id="no-chat-selected"
+                style="display:flex; flex:1; justify-content:center; align-items:center; color:#999; flex-direction:column;">
+                <i class="fa-regular fa-comments" style="font-size: 50px; margin-bottom: 20px;"></i>
+                <h2>Select a user to start chatting</h2>
+            </div>
+
+            <!-- Chat Room -->
+            <div id="chat-room-container" class="hidden"
+                style="display:flex; flex-direction:column; height:100%; position: relative;">
+                <header class="chat-header" onclick="toggleProfile()">
+                    <div class="header-user-info">
+                        <img src="https://ui-avatars.com/api/?background=random" class="avatar" id="header-avatar"
+                            alt="User">
+                        <div class="header-details">
+                            <h3 id="chat-partner-name">Name</h3>
+                            <span id="chat-status">Online</span>
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <i class="fa-solid fa-phone" style="margin-right: 20px; font-size: 18px;"
+                            title="Voice Call"></i>
+                        <i class="fa-solid fa-video" style="margin-right: 20px; font-size: 18px;"
+                            title="Video Call"></i>
+                        <i class="fa-solid fa-circle-info" title="Chat Info"></i>
+                    </div>
+                </header>
+
+                <div class="messages-container" id="messages-container">
+                    <!-- Messages go here -->
+                </div>
+
+                <!-- Emoji Picker Popup -->
+                <div id="emoji-picker" class="emoji-picker hidden">
+                    <div class="emoji-item">😀</div>
+                    <div class="emoji-item">😂</div>
+                    <div class="emoji-item">😍</div>
+                    <div class="emoji-item">😭</div>
+                    <div class="emoji-item">😡</div>
+                    <div class="emoji-item">👍</div>
+                    <div class="emoji-item">👎</div>
+                    <div class="emoji-item">🎉</div>
+                    <div class="emoji-item">🔥</div>
+                    <div class="emoji-item">❤️</div>
+                </div>
+
+                <footer class="chat-input-area">
+                    <form id="message-form" style="width:100%;">
+                        <div class="input-wrapper">
+                            <!-- Toggle Emoji -->
+                            <i class="fa-regular fa-face-smile input-icon" onclick="toggleEmojiPicker()"
+                                style="color:var(--text-secondary);"></i>
+
+                            <!-- File Upload -->
+                            <input type="file" id="image-upload" accept="image/*" style="display:none;"
+                                onchange="handleImageUpload()">
+                            <i class="fa-solid fa-paperclip input-icon"
+                                onclick="document.getElementById('image-upload').click()"
+                                style="color:var(--text-secondary);"></i>
+
+                            <input type="text" id="message-input" class="chat-input" placeholder="Type a message"
+                                autocomplete="off">
+                            <button type="submit" style="background:none; border:none; cursor:pointer;"><i
+                                    class="fa-solid fa-paper-plane input-icon"
+                                    style="color:var(--text-primary); margin-right:0;"></i></button>
+                        </div>
+                    </form>
+                </footer>
+            </div>
+        </main>
+
+        <!-- 4. Profile Sidebar (Rightmost) -->
+        <aside class="profile-sidebar" id="right-profile-sidebar">
+            <div class="profile-header">
+                <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="toggleProfile()"></i>
+            </div>
+
+            <img src="https://ui-avatars.com/api/?name=User" class="profile-avatar-large" id="profile-sidebar-img"
+                alt="User">
+            <div class="profile-name" id="profile-sidebar-name">User Name</div>
+            <div class="profile-handle" id="profile-sidebar-handle">@username</div>
+
+            <div class="profile-actions">
+                <button class="action-btn"><i class="fa-solid fa-phone"></i></button>
+                <button class="action-btn"><i class="fa-solid fa-video"></i></button>
+                <button class="action-btn"><i class="fa-regular fa-image"></i></button>
+            </div>
+
+            <!-- Separator -->
+            <hr style="width:100%; border:0; border-top:1px solid #eee; margin:20px 0;">
+
+            <div style="text-align:center; color:#999; font-size:12px;">
+                Media gallery hidden
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        const socket = io();
+        const myUsername = "{{ username }}";
+        const initialTarget = "{{ target_partner if target_partner else '' }}"; // Get from Flask
+        let currentPartner = null;
+        let typingTimeout = null;
+        let activeChats = {};
+        let allOnlineUsers = [];
+        let typingUsers = {}; // Track who is typing
+
+        // Create typing indicator element
+        function createTypingIndicator() {
+            // Remove existing typing indicator if any
+            const existing = document.getElementById("message-typing-bubble");
+            if (existing) existing.remove();
+
+            // Create new typing indicator
+            const container = document.getElementById("messages-container");
+            const typingBubble = document.createElement("div");
+            typingBubble.id = "message-typing-bubble";
+            typingBubble.className = "message-typing-indicator hidden";
+
+            const dotsDiv = document.createElement("div");
+            dotsDiv.className = "typing-dots";
+
+            for (let i = 0; i < 3; i++) {
+                const dot = document.createElement("div");
+                dot.className = "typing-dot";
+                dotsDiv.appendChild(dot);
+            }
+
+            typingBubble.appendChild(dotsDiv);
+            container.appendChild(typingBubble);
+        }
+
+        // Convert timestamp to relative time
+        function getRelativeTime(timestamp) {
+            const now = new Date();
+            const msgTime = new Date();
+            const [hours, minutes] = timestamp.split(':');
+            msgTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            const diffMs = now - msgTime;
+            const diffMins = Math.floor(diffMs / 60000);
+
+            if (diffMins < 1) return 'now';
+            if (diffMins < 60) return `${diffMins}m`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h`;
+            return timestamp; // Return original if more than a day
+        }
+
+        // --- On Connect ---
+        socket.on("connect", () => {
+            socket.emit("register", { username: myUsername });
+
+            // Auto-start chat if URL has partner
+            if (initialTarget && !currentPartner) {
+                // Determine if online check is needed or just open plain?
+                // For now, just try to open UI.
+                startChat(initialTarget, false); // false = don't push state again
+            }
+        });
+
+        // --- User List Query & Search ---
+        socket.on("update_user_list", (users) => {
+            allOnlineUsers = users.filter(u => u !== myUsername);
+            renderUserList(allOnlineUsers);
+        });
+
+        document.getElementById("user-search").addEventListener("input", function (e) {
+            const term = e.target.value.toLowerCase();
+            const filtered = allOnlineUsers.filter(u => u.toLowerCase().includes(term));
+            renderUserList(filtered);
+        });
+
+        function renderUserList(users) {
+            const container = document.getElementById("online-users-list");
+            container.innerHTML = "";
+
+            if (users.length === 0) {
+                container.innerHTML = "<span style='font-size:12px; color:#999; padding: 0 10px;'>No results</span>";
+                return;
+            }
+
+            users.forEach(user => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "avatar-wrapper";
+                wrapper.onclick = () => startChat(user);
+
+                const img = document.createElement("img");
+                img.src = `https://ui-avatars.com/api/?name=${user}&background=random`;
+                img.className = "avatar";
+
+                const status = document.createElement("div");
+                status.className = "status-indicator";
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(status);
+                wrapper.title = user;
+                container.appendChild(wrapper);
+            });
+        }
+
+        // --- Toggle Profile Sidebar ---
+        function toggleProfile() {
+            const sb = document.getElementById("right-profile-sidebar");
+            const app = document.querySelector(".app-container");
+            if (sb.style.display === "none" || sb.style.display === "") {
+                sb.style.display = "flex";
+                app.classList.remove("profile-hidden");
+            } else {
+                sb.style.display = "none";
+                app.classList.add("profile-hidden");
+            }
+        }
+
+        // --- Toggle Main Nav Sidebar ---
+        function toggleSidebar() {
+            const sb = document.getElementById("main-nav-sidebar");
+            sb.classList.toggle("expanded");
+        }
+
+        // --- Start Chat ---
+        function startChat(partner, pushState = true) {
+            currentPartner = partner;
+
+            if (pushState) {
+                const newUrl = `/message/${partner}?username=${myUsername}`;
+                history.pushState({ partner: partner }, "", newUrl);
+            }
+
+            document.getElementById("no-chat-selected").classList.add("hidden");
+            const roomContainer = document.getElementById("chat-room-container");
+            roomContainer.classList.remove("hidden");
+            roomContainer.style.display = "flex";
+
+            document.getElementById("chat-partner-name").innerText = partner;
+            document.getElementById("header-avatar").src = `https://ui-avatars.com/api/?name=${partner}&background=random`;
+            document.getElementById("messages-container").innerHTML = "";
+
+            // Re-create typing indicator after clearing messages
+            createTypingIndicator();
+
+            // Hide sidebar initially
+            document.getElementById("right-profile-sidebar").style.display = "none";
+            document.querySelector(".app-container").classList.add("profile-hidden");
+
+            // Update sidebar content (for when it's toggled)
+            document.getElementById("profile-sidebar-name").innerText = partner;
+            document.getElementById("profile-sidebar-handle").innerText = "@" + partner;
+            document.getElementById("profile-sidebar-img").src = `https://ui-avatars.com/api/?name=${partner}&background=random`;
+
+            if (activeChats[partner]) {
+                activeChats[partner].unreadCount = 0;
+                updateActiveChatList();
+            }
+
+            socket.emit("join_private_chat", { username: myUsername, target: partner });
+        }
+
+        // --- History & New Messages ---
+        function appendMessage(data) {
+            const isMe = data.sender === myUsername;
+            const container = document.getElementById("messages-container");
+
+            const group = document.createElement("div");
+            group.className = `message-group ${isMe ? 'sent' : 'received'}`;
+
+            const name = document.createElement("div");
+            name.className = "message-sender-name";
+            name.innerText = data.sender;
+
+            const bubble = document.createElement("div");
+            bubble.className = "message-bubble";
+
+            // Handle Image vs Text
+            if (data.image) {
+                bubble.style.background = "transparent";
+                bubble.style.padding = "0";
+                bubble.style.boxShadow = "none";
+                bubble.innerHTML = `<img src="${data.image}" style="max-width:200px; border-radius:10px; border:1px solid #ddd;"> <div style="text-align:right; font-size:10px; color:#999; margin-top:5px;">${data.timestamp}</div>`;
+            } else {
+                bubble.innerHTML = `${data.message} <span class="message-time">${data.timestamp}</span>`;
+            }
+
+            group.appendChild(name);
+            group.appendChild(bubble);
+
+            // Insert before typing indicator if it exists, otherwise just append
+            const typingIndicator = document.getElementById("message-typing-bubble");
+            if (typingIndicator) {
+                container.insertBefore(group, typingIndicator);
+            } else {
+                container.appendChild(group);
+            }
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        socket.on("message_history", (history) => history.forEach(msg => appendMessage(msg)));
+        socket.on("new_message", (data) => appendMessage(data));
+
+        // --- Active Chats List ---
+        socket.on("new_message_notification", (data) => {
+            let chatPartner = data.sender;
+            if (data.is_self) chatPartner = data.partner;
+
+            if (!activeChats[chatPartner]) activeChats[chatPartner] = { unreadCount: 0 };
+
+            // Use "Photo" text for image messages in preview
+            const previewText = data.image ? "📷 Photo" : data.message;
+
+            activeChats[chatPartner].lastMsg = previewText;
+            activeChats[chatPartner].time = data.timestamp;
+            activeChats[chatPartner].timestamp = Date.now(); // For sorting
+
+            if (!data.is_self && currentPartner !== chatPartner) {
+                activeChats[chatPartner].unreadCount += 1;
+            }
+            updateActiveChatList();
+        });
+
+        function updateActiveChatList() {
+            const list = document.getElementById("active-chat-list");
+            list.innerHTML = "";
+
+            // Sort partners by latest message time (most recent first)
+            const sortedPartners = Object.keys(activeChats).sort((a, b) => {
+                const timeA = activeChats[a].timestamp || 0;
+                const timeB = activeChats[b].timestamp || 0;
+                return timeB - timeA; // Descending order (latest first)
+            });
+
+            sortedPartners.forEach(partner => {
+                const info = activeChats[partner];
+                const item = document.createElement("div");
+                item.className = `chat-item ${currentPartner === partner ? 'active' : ''}`;
+                item.onclick = () => startChat(partner);
+
+                const img = document.createElement("img");
+                img.src = `https://ui-avatars.com/api/?name=${partner}&background=random`;
+                img.className = "avatar";
+
+                const infoDiv = document.createElement("div");
+                infoDiv.className = "chat-info";
+
+                // Unread Count
+                let badgeHtml = info.unreadCount > 0 ? `<div class="badge">${info.unreadCount}</div>` : "";
+
+                // Check if user is typing
+                const isTyping = typingUsers[partner];
+                const messagePreview = isTyping ? '<span style="color:#31a24c;font-style:italic;">Typing......</span>' : info.lastMsg;
+                const previewStyle = !isTyping && info.unreadCount > 0 ? 'font-weight:600;color:black;' : '';
+
+                infoDiv.innerHTML = `
+                <div class="chat-name-row">
+                    <span class="chat-name">${partner}</span> <span class="chat-time">${getRelativeTime(info.time)}</span>
+                </div>
+                <div class="chat-preview-row">
+                    <span class="chat-message-preview" style="${previewStyle}">${messagePreview}</span>
+                    ${badgeHtml}
+                </div>
+            `;
+                item.appendChild(img);
+                item.appendChild(infoDiv);
+                list.appendChild(item);
+            });
+        }
+
+        // --- Emoji & Image Features ---
+        function toggleEmojiPicker() {
+            document.getElementById("emoji-picker").classList.toggle("hidden");
+        }
+
+        // Add emoji to input
+        document.querySelectorAll('.emoji-item').forEach(item => {
+            item.addEventListener('click', e => {
+                const emoji = e.target.innerText;
+                const input = document.getElementById("message-input");
+                input.value += emoji;
+                input.focus();
+                toggleEmojiPicker();
+            });
+        });
+
+        // Handle Image Upload
+        function handleImageUpload() {
+            const fileInput = document.getElementById("image-upload");
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const base64 = e.target.result;
+                    socket.emit("private_message", {
+                        sender: myUsername,
+                        receiver: currentPartner,
+                        message: "", // Empty text
+                        image: base64
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+            fileInput.value = ""; // Reset
+        }
+
+        // --- Sending Messages (Text) ---
+        const form = document.getElementById("message-form");
+        const input = document.getElementById("message-input");
+
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            const msg = input.value.trim();
+            if (!msg || !currentPartner) return;
+
+            socket.emit("private_message", {
+                sender: myUsername,
+                receiver: currentPartner,
+                message: msg
+            });
+
+            input.value = "";
+            socket.emit("stop_typing", { sender: myUsername, receiver: currentPartner });
+        };
+
+        input.addEventListener("input", () => {
+            if (!currentPartner) return;
+            socket.emit("typing", { sender: myUsername, receiver: currentPartner });
+            if (typingTimeout) clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit("stop_typing", { sender: myUsername, receiver: currentPartner });
+            }, 1000);
+        });
+
+        // Listen for typing events
+        socket.on("user_typing", (data) => {
+            const typingUser = data.username;
+            typingUsers[typingUser] = true;
+
+            if (typingUser === currentPartner) {
+                // Show typing indicator in message area
+                const typingBubble = document.getElementById("message-typing-bubble");
+                if (typingBubble) {
+                    typingBubble.classList.remove("hidden");
+                    // Scroll to bottom to show indicator
+                    const container = document.getElementById("messages-container");
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+
+            // Update active chats to show typing indicator
+            updateActiveChatList();
+        });
+
+        socket.on("user_stop_typing", (data) => {
+            const typingUser = data.username;
+            delete typingUsers[typingUser];
+
+            if (typingUser === currentPartner) {
+                // Hide typing indicator in message area
+                const typingBubble = document.getElementById("message-typing-bubble");
+                if (typingBubble) {
+                    typingBubble.classList.add("hidden");
+                }
+            }
+
+            // Update active chats to remove typing indicator
+            updateActiveChatList();
+        });
+
+    </script>
+</body>
+
+</html>

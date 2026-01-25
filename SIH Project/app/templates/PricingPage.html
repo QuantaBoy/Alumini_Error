@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/PricingPage.css') }}">
+</head>
+
+<body>
+
+  <div class="outer-wrap">
+
+    <div class="pricing-page">
+
+      <!-- SCROLL EDGES (HIDDEN) -->
+      <div class="scroll-edge-top scroll-edge-1"></div>
+      <div class="scroll-edge-top scroll-edge-2"></div>
+      <div class="scroll-edge-top scroll-edge-3"></div>
+
+      <!-- EVERYTHING INSIDE WILL SCALE (TITLE + CARDS) -->
+      <div class="content-scale">
+
+        <h1 class="pricing-title">Pricing</h1>
+
+        <div class="pricing-cards">
+
+          <!-- FREE PLAN -->
+          <div class="pricing-card free-card">
+            <div class="plan-name free-plan">Free</div>
+            <div class="plan-price" id="price-free">$ 0 /month</div>
+
+            <div class="features-list">
+              <div class="feature-item feature-1">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Course Recommendation</span>
+              </div>
+
+              <div class="feature-item feature-2">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Network Building</span>
+              </div>
+
+              <div class="feature-item feature-3">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Internship Offering</span>
+              </div>
+
+              <div class="feature-item feature-4">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Free Course</span>
+              </div>
+            </div>
+
+            <button class="get-started-btn get-started-outline">Get Started</button>
+          </div>
+
+          <!-- STANDARD PLAN -->
+          <div class="pricing-card standard-card">
+            <div class="plan-name standard-plan">Standard</div>
+            <div class="plan-price" id="price-standard">$ 9.99/month</div>
+
+            <div class="features-list">
+              <div class="feature-item feature-1">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Carrier Path Recommendation</span>
+              </div>
+
+              <div class="feature-item feature-2">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Mentors Connectivity Recommendation</span>
+              </div>
+
+              <div class="feature-item feature-3">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Workshop</span>
+              </div>
+
+              <div class="feature-item feature-4">
+                <svg class="check-icon" width="24" height="24" fill="white">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
+                <span class="feature-text">Enable AI Tools</span>
+              </div>
+            </div>
+
+            <button class="get-started-btn get-started-filled">Get Started</button>
+          </div>
+
+          <!-- PREMIUM PLAN -->
+          <div class="pricing-card premium-card">
+            <div class="plan-name premium-plan">Premium</div>
+            <div class="plan-price" id="price-premium">$ 19.99/month</div>
+
+            <div class="features-list">
+              <div class="feature-item feature-1">
+                <svg class="check-icon" width="24" height="24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff"></path>
+                </svg>
+                <span class="feature-text">Unlocked AI Access</span>
+              </div>
+
+              <div class="feature-item feature-2">
+                <svg class="check-icon" width="24" height="24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff"></path>
+                </svg>
+                <span class="feature-text">Unlock All Course</span>
+              </div>
+
+              <div class="feature-item feature-3">
+                <svg class="check-icon" width="24" height="24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff"></path>
+                </svg>
+                <span class="feature-text">Free Workshops & Training Program</span>
+              </div>
+
+              <div class="feature-item feature-4">
+                <svg class="check-icon" width="24" height="24">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#fff"></path>
+                </svg>
+                <span class="feature-text">Free Mentorship Program</span>
+              </div>
+            </div>
+
+            <button class="get-started-btn get-started-outline">Get Started</button>
+          </div>
+
+        </div> <!-- pricing-cards -->
+
+      </div> <!-- content-scale END -->
+
+      <!-- ⭐ TOGGLE SECTION OUTSIDE SCALE (WORKS PERFECTLY) -->
+      <div class="toggle-section">
+        <span class="billed-yearly-text">Billed<br>Yearly</span>
+
+        <div class="toggle-container" id="toggleBtn">
+          <div class="toggle-knob toggle-off" id="toggleKnob"></div>
+        </div>
+      </div>
+
+    </div> <!-- pricing-page -->
+
+  </div> <!-- outer-wrap -->
+
+  <script src="{{url_for('static' , filename = 'js/PricingPage.js')}}"></script>
+
+</body>
+</html>

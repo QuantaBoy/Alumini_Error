@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <link rel="stylesheet"  href="{{ url_for('static', filename='css/leetcode.css') }}">
+</head>
+<body>
+    
+    <div class="container">
+        <h2>LeetCode</h2>
+        <form action="{{ url_for('leetcode.fetch') }}" method="post">
+            <button type="submit">Fetch LeetCode Data</button>
+        </form>
+        <h2>Results</h2>
+    <table>
+        {% if table %}
+            {{ table | safe }}
+        {% else %}
+            <p>Fetching data… page will refresh automatically.</p>
+        <script>
+            setTimeout(() => location.reload(), 5000);
+        </script>
+        {% endif %}
+    </table>
+    </div>
+</body>
+</html>

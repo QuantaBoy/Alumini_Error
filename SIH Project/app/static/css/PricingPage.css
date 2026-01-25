@@ -1,0 +1,559 @@
+.pricing-page {
+  width: 1600px;     
+  min-height: 900px;
+  background-color: #000;
+  margin: 0 auto;
+  position: relative;
+  overflow: visible;
+  border-radius: 20px; 
+}
+
+
+/* Scroll Edge Effects */
+.scroll-edge-top {
+  
+  display: none;
+
+
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  border-radius: 100px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.scroll-edge-1 {
+  top: 0;
+  left: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.scroll-edge-2 {
+  top: 0;
+  left: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.scroll-edge-3 {
+  top: 0;
+  left: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Main Title */
+.pricing-title {
+  position: absolute;
+  left: 243px;
+  top: 162px;
+  width: 953px;
+  height: 200px;
+  font-family: 'Newsreader', serif;
+  font-weight: 400;
+  font-size: 300px;
+  line-height: 1em;
+  text-align: center;
+  color: #FFFFFF;
+  margin: 0;
+  pointer-events: none;
+}
+
+/* Pricing Cards Container */
+.pricing-cards {
+  position: absolute;
+  top: 200px;
+  left: 0;
+  width: 100%;
+  height: 580px;
+}
+
+/* Individual Pricing Card */
+.pricing-card {
+  width: 391px;
+  height: 592px;
+  background: linear-gradient(26deg, rgba(255, 255, 255, 0.1) 22%, rgba(255, 255, 255, 0.2) 95%);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-radius: 30px;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  transition: all 0.3s ease;
+  overflow: visible;
+  padding: 0;
+}
+
+.pricing-card:nth-child(1) {
+  left: -9.6%;
+  top: 240px;
+  width: 38%;
+  height: 670px;
+}
+
+.pricing-card:nth-child(2) {
+  left: 410px;
+  top: 240px;
+  height: 670px;
+  width: 38%;
+}
+
+.pricing-card:nth-child(3) {
+  left: 950px;
+  top: 240px;
+  width: 38%;
+  height: 670px;
+}
+
+/* Plan Name */
+.plan-name {
+  font-family: 'Newsreader', serif;
+  font-weight: 400;
+  font-size: 66px;
+  line-height: 1.1;
+  text-align: center;
+  margin-top: 40px;
+  margin-bottom: 0;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.free-plan {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 251, 251, 1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  width: 200px;
+  top: 35px;
+
+}
+
+.standard-plan {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 16%, rgba(153, 153, 153, 1) 73%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  width: 300px;
+  top: 35px;
+}
+
+.premium-plan {
+  background: linear-gradient(0deg, rgba(255, 165, 0, 1) 27%, rgba(153, 99, 0, 0.3) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  width: 300px;
+  top: 35px;
+}
+
+/* Plan Price */
+.plan-price {
+  font-family: 'Newsreader', serif;
+  font-weight: 600;
+  font-size: 55px;
+  line-height: 1em;
+  text-align: center;
+  color: #FFFFFF;
+  margin-bottom: 0;
+  margin-top: 15px;
+  height: 120px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 199px;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+}
+
+/* Features List */
+.features-list {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.check-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: block;
+  margin-top: 4px;
+}
+
+.feature-text {
+  font-family: 'Crimson Pro', serif;
+  font-weight: 400;
+  font-size: 37px;
+  line-height: 1.111328125em;
+  color: #FFFFFF;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow: visible;
+  display: block;
+  line-height: 1.2;
+}
+
+/* Free card feature positioning */
+.free-card .feature-item {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 1;
+  overflow: visible;
+}
+
+.free-card .feature-item.feature-1 {
+  left: 100px;
+  top: 250px;
+  width: 302px;
+  justify-content: center;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.free-card .feature-item.feature-1 .feature-text {
+  white-space: nowrap;
+}
+
+.free-card .feature-item.feature-2 {
+  left: 96px;
+  top: 322px;
+  width: 212px;
+  justify-content: center;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.free-card .feature-item.feature-2 .feature-text {
+  white-space: nowrap;
+}
+
+.free-card .feature-item.feature-3 {
+  left: 92px;
+  top: 390px;
+  width: 233px;
+  justify-content: center;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.free-card .feature-item.feature-3 .feature-text {
+  white-space: nowrap;
+}
+
+.free-card .feature-item.feature-4 {
+  left: 90px;
+  top: 460px;
+  width: 141px;
+  justify-content: center;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.free-card .feature-item.feature-4 .feature-text {
+  white-space: nowrap;
+}
+
+.free-card .feature-text {
+  text-align: center;
+}
+
+/* Standard card feature positioning */
+.standard-card .feature-item {
+
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 1;
+  overflow: visible;
+}
+
+.standard-card .feature-item.feature-1 {
+  left: 57px;
+  top: 250px;
+  width: 339px;
+  justify-content: flex-start;
+  min-height: 66px;
+  align-items: flex-start;
+}
+
+.standard-card .feature-item.feature-2 {
+  left: 57px;
+  top: 345px;
+  width: 360px;
+  justify-content: flex-start;
+  min-height: 66px;
+  align-items: flex-start;
+  
+}
+
+.standard-card .feature-item.feature-3 {
+  left: 57px;
+  top: 438px;
+  width: 125px;
+  justify-content: flex-start;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.standard-card .feature-item.feature-4 {
+  left: 57px;
+  top: 496px;
+  width: 185px;
+  justify-content: flex-start;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.standard-card .feature-item.feature-4 .feature-text {
+  white-space: nowrap;
+}
+
+.standard-card .feature-text {
+  text-align: left;
+  font-size: 37px;
+  white-space: normal;
+    line-height: 1;
+}
+
+/* Premium card feature positioning */
+.premium-card .feature-item {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  z-index: 1;
+  overflow: visible;
+}
+
+.premium-card .feature-item.feature-1 {
+  left: 75px;
+  top: 244px;
+  width: 230px;
+  justify-content: flex-start;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.premium-card .feature-item.feature-1 .feature-text {
+  white-space: nowrap;
+}
+
+.premium-card .feature-item.feature-2 {
+  left: 75px;
+  top: 300px;
+  width: 213px;
+  justify-content: flex-start;
+  min-height: 33px;
+  align-items: flex-start;
+}
+
+.premium-card .feature-item.feature-2 .feature-text {
+  white-space: nowrap;
+}
+
+.premium-card .feature-item.feature-3 {
+  left: 75px;
+  top: 360px;
+  width: 316px;
+  justify-content: flex-start;
+  min-height: 71px;
+  align-items: flex-start;
+}
+
+.premium-card .feature-item.feature-4 {
+  left: 75px;
+  top: 460px;
+  width: 300px;
+  justify-content: flex-start;
+  min-height: 66px;
+  align-items: flex-start;
+}
+
+.premium-card .feature-text {
+  text-align: left;
+  white-space: normal;
+    line-height: 1;
+}
+
+/* Get Started Buttons */
+.get-started-btn {
+  top: 550px;
+  width: 275px;
+  height: 71px;
+  border-radius: 40px;
+  border: none;
+  font-family: 'Newsreader', serif;
+  font-weight: 600;
+  font-size: 29px;
+  line-height: 1em;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: absolute;
+  bottom: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0 auto;
+  z-index: 2;
+}
+
+.get-started-outline {
+  background-color: #000000;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.get-started-filled {
+  background-color: #FFFFFF;
+  color: #000000;
+}
+
+.get-started-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+.toggle-section {
+  margin-top: 40px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+.billed-yearly-text {
+  font-family: 'Newsreader', serif;
+  font-size: 24px;
+  color: #fff;
+  margin-top: -300px;
+}
+
+/* TOGGLE SWITCH */
+.toggle-container {
+  width: 51px;
+  height: 31px;
+  background: #fff;
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  top: -150px;
+}
+
+.toggle-knob {
+  width: 27px;
+  height: 27px;
+  background: #000;
+  border-radius: 100px;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left .3s ease;
+}
+
+.toggle-knob.toggle-on {
+  left: 22px !important;
+}
+
+/* Smooth transition for price changes */
+.pricing-cards {
+  transition: opacity 0.3s ease;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 1440px) {
+  .pricing-page {
+    width: 100%;
+    height: auto;
+    min-height: 1024px;
+  }
+
+  .pricing-title {
+    font-size: 480px;
+    left: 50%;
+    top: 5px;
+    transform: translateX(-50%);
+    width: 110%;
+  }
+
+  .pricing-cards {
+    position: static;
+    flex-direction: column;
+    align-items: center;
+    padding: 400px 20px 100px;
+    gap: 40px;
+  }
+
+  .toggle-section {
+    position: static;
+    justify-content: center;
+    margin: 40px auto;
+    padding-bottom: 40px;
+  }
+}
+
+@media (max-width: 768px) {
+  .pricing-title {
+    font-size: 120px;
+    top: 80px;
+  }
+
+  .pricing-cards {
+    padding-top: 300px;
+  }
+
+  .pricing-card {
+    width: 100%;
+    max-width: 391px;
+  }
+}
+.outer-wrap {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #000;
+}
+
+
+.outer-wrap .pricing-page {
+  transform: scale(0.55);  
+  transform-origin: top center;
+}
+html, body {
+  width: 100%;
+  overflow-x: hidden;   /* removes horizontal scroll */
+  margin: 0;
+  padding: 0;
+}
+.toggle-knob.toggle-on {
+  left: 22px !important;
+}
+
+.toggle-knob.toggle-off {
+  left: 2px !important;
+}

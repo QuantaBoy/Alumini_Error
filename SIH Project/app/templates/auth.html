@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Sign In/Up</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Kadwa:wght@700&family=Cardo:wght@400&family=Inknut+Antiqua:wght@800&family=Inter:wght@500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+</head>
+
+<body>
+
+    <div class="container" id="container">
+        <!-- Sign Up Container -->
+        <div class="form-container sign-up-container">
+            <form action="{{ url_for('auth.signup') }}" method="POST">
+                <h1>Create Account</h1>
+
+                <!-- User Role Toggle -->
+                <div class="role-toggle-container">
+                    <div class="role-bg"></div>
+                    <input type="radio" id="role-student" name="role" value="student" checked onchange="toggleFields()">
+                    <label for="role-student">Student</label>
+
+                    <input type="radio" id="role-alumni" name="role" value="alumni" onchange="toggleFields()">
+                    <label for="role-alumni">Alumni</label>
+
+                    <input type="radio" id="role-management" name="role" value="management" onchange="toggleFields()">
+                    <label for="role-management">Admin</label>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" name="username" placeholder="Full Name" required />
+                    <i class="fas fa-user input-icon"></i>
+                </div>
+                <div class="input-group">
+                    <input type="email" name="email" placeholder="Email address" required />
+                    <i class="fas fa-envelope input-icon"></i>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Password" required />
+                    <i class="fas fa-lock input-icon"></i>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="confirm_password" placeholder="Confirm Password" required />
+                    <i class="fas fa-lock input-icon"></i>
+                </div>
+
+                <!-- Dynamic Additional Fields -->
+                <div id="field-student" class="dynamic-field">
+                    <div class="input-group">
+                        <input type="text" name="student_id" placeholder="Student ID" />
+                        <i class="fas fa-id-card input-icon"></i>
+                    </div>
+                </div>
+                <div id="field-alumni" class="dynamic-field" style="display:none;">
+                    <div class="input-group">
+                        <input type="text" name="graduation_year" placeholder="Graduation Year" />
+                        <i class="fas fa-graduation-cap input-icon"></i>
+                    </div>
+                </div>
+                <div id="field-management" class="dynamic-field" style="display:none;">
+                    <div class="input-group">
+                        <input type="text" name="admin_code" placeholder="Admin ID" />
+                        <i class="fas fa-user-shield input-icon"></i>
+                    </div>
+                </div>
+
+                <button type="submit">Sign Up</button>
+                <span>or</span>
+                <div class="social-container">
+                    <img src="{{ url_for('static', filename='images/ellipse-1.png') }}" alt="Google"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-2.png') }}" alt="Github"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-3.png') }}" alt="App Store"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-4.png') }}" alt="Facebook"
+                        class="social-icon">
+                </div>
+                <a href="#" onclick="event.preventDefault(); document.getElementById('signIn').click()">Already have an
+                    account? <span id="toggle-signin">Login</span></a>
+            </form>
+        </div>
+
+        <!-- Sign In Container -->
+        <div class="form-container sign-in-container">
+            <form action="{{ url_for('auth.login') }}" method="POST">
+                <h1>Welcome Back 👋</h1>
+                <p>Please Enter Your Details</p>
+
+                <div class="input-group">
+                    <input type="email" name="email" placeholder="Login with Email" required />
+                    <i class="fas fa-envelope input-icon"></i>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Login with password" required />
+                    <i class="fas fa-lock input-icon"></i>
+                </div>
+
+                <button type="submit">Login</button>
+                <span>or</span>
+                <div class="social-container">
+                    <img src="{{ url_for('static', filename='images/ellipse-1.png') }}" alt="Google"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-2.png') }}" alt="Github"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-3.png') }}" alt="App Store"
+                        class="social-icon">
+                    <img src="{{ url_for('static', filename='images/ellipse-4.png') }}" alt="Facebook"
+                        class="social-icon">
+                </div>
+
+                <a href="#" onclick="event.preventDefault(); document.getElementById('signUp').click()">Don't have an
+                    Account? <span id="toggle-signup">Signup</span></a>
+            </form>
+        </div>
+
+        <!-- Overlay Container (The Sliding Part) -->
+        <div class="overlay-container">
+            <div class="overlay">
+                <div class="overlay-panel overlay-left">
+                    <!-- Image for Signup Mode (Left Panel) -->
+                    <button class="ghost" id="signIn"
+                        style="opacity: 0; position: absolute; width: 100%; height: 100%; top:0; left:0; cursor: pointer;">Sign
+                        In</button>
+                </div>
+                <div class="overlay-panel overlay-right">
+                    <!-- Image for Login Mode (Right Panel) -->
+                    <button class="ghost" id="signUp"
+                        style="opacity: 0; position: absolute; width: 100%; height: 100%; top:0; left:0; cursor: pointer;">Sign
+                        Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+
+</html>
