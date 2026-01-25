@@ -13,6 +13,7 @@ class User(UserMixin, db.Model):
 
     profile_completed = db.Column(db.Boolean, default=False)
     github_username = db.Column(db.String(120), index=True)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
 
     leetcode_username = db.Column(db.String(120))
     codeforces_username = db.Column(db.String(120))

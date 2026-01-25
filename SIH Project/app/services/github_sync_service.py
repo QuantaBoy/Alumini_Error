@@ -9,9 +9,20 @@ def sync_github_for_user(user):
     if not user or not user.github_username:
         return
 
-    if user.last_github_sync:
-        if datetime.utcnow() - user.last_github_sync < SYNC_INTERVAL:
-            return
+    # DEBUG: Always run sync for now
+    # if user.last_github_sync:
+    #     if datetime.utcnow() - user.last_github_sync < SYNC_INTERVAL:
+    #         return
+
+    # Set Pending Status
+    try:
+        user.github_sync_status = "pending"
+        db.session.commit()
+        with open("debug_sync.txt", "a") as f:
+            f.write(f"Started sync for {user.username}\n")
+    except Exception as e:
+        with open("debug_sync.txt", "a") as f:
+            f.write(f"DB Error setting pending: {str(e)}\n")
 
     try:
         data = build_full_github_profile(user.github_username)

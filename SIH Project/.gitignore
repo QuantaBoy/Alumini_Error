@@ -8,3 +8,5 @@ instance/
 node_modules/
 backend/uploads/
 *.log
+
+debug_sync.txt

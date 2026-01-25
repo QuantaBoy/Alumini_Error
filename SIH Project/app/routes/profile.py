@@ -84,9 +84,26 @@ def complete_profile():
 
         db.session.commit()
 
-        # 🚀 Trigger GitHub sync ONCE
+        # 🚀 Trigger GitHub sync in BACKGROUND
         if user.github_username:
-            sync_github_for_user(user)
+            import threading
+            from flask import current_app
+            
+            # Capture real app object to pass to thread
+            real_app = current_app._get_current_object()
+
+            def bg_sync(app_obj, u_id):
+                with app_obj.app_context():
+                    from app.models import User
+                    # Re-query user to avoid session issues
+                    u = User.query.get(u_id)
+                    if u:
+                        print(f"Starting background sync for user {u.id}...")
+                        sync_github_for_user(u)
+                        print(f"Background sync finished. Status: {u.github_sync_status}")
+                    
+            thread = threading.Thread(target=bg_sync, args=(real_app, user.id))
+            thread.start()
 
         return redirect(url_for("profile.profile_page"))
 

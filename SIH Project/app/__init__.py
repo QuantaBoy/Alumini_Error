@@ -46,6 +46,7 @@ def app_run():
     from .routes.subscription import subscription_bp
     from .routes.leetcode_routes import leetcode_bp
     from .routes.profile import profile_bp
+    from .routes.admin import admin_bp
 
     app.register_blueprint(home_bp)
     app.register_blueprint(message_bp, url_prefix="/message")
@@ -53,6 +54,7 @@ def app_run():
     app.register_blueprint(subscription_bp, url_prefix="/subscription")
     app.register_blueprint(leetcode_bp, url_prefix="/leetcode")
     app.register_blueprint(profile_bp, url_prefix="/profile")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
 
     with app.app_context():
         db.create_all()

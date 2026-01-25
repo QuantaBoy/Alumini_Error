@@ -84,3 +84,10 @@ def signup():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+@auth_bp.before_app_request
+def update_last_seen():
+    from datetime import datetime
+    if current_user.is_authenticated:
+        current_user.last_seen = datetime.utcnow()
+        db.session.commit()

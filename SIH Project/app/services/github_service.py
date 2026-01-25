@@ -16,10 +16,20 @@ HEADERS = {
 }
 
 def _get(url, params=None):
-    r = requests.get(url, headers=HEADERS, params=params)
-    if r.status_code != 200:
-        raise RuntimeError(f"GitHub API failed: {url} | {r.status_code}")
-    return r.json(), r.headers
+    try:
+        # TIMEOUT ADDED to prevent hanging
+        r = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        
+        if r.status_code != 200:
+            with open("debug_sync.txt", "a") as f:
+                f.write(f"API Error [{r.status_code}]: {url}\n")
+            raise RuntimeError(f"GitHub API failed: {url} | {r.status_code}")
+            
+        return r.json(), r.headers
+    except Exception as e:
+        with open("debug_sync.txt", "a") as f:
+            f.write(f"Network/Code Error: {str(e)}\n")
+        raise e
 
 def fetch_github_profile(username):
     data, _ = _get(f"{BASE_URL}/users/{username}")
