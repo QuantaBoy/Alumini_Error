@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 instance/
 .DS_Store
+
+node_modules/
+backend/uploads/
+*.log
