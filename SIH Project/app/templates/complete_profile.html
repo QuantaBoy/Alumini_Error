@@ -1,36 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Complete Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/completeprofile.css') }}" />
 </head>
+
 <body>
 
-<h1>Complete Your Profile</h1>
+    <div class="container-card">
+        <h1>Setup Profile</h1>
+        <p>Connect your coding platforms to generate your developer card.</p>
 
-<form method="POST">
+        <form method="POST">
 
-    <label>GitHub Username:</label><br>
-    <input type="text" name="github_username" required><br><br>
+            <label class="section-title">Primary</label>
+            <div class="input-group">
+                <i class="fab fa-github input-icon"></i>
+                <input type="text" name="github_username" placeholder="GitHub Username *" required>
+            </div>
 
-    <label>LinkedIn URL:</label><br>
-    <input type="url" name="linkedin_url"><br><br>
+            <div class="input-group">
+                <i class="fab fa-linkedin input-icon"></i>
+                <input type="url" name="linkedin_url" placeholder="LinkedIn URL">
+            </div>
 
-    <label>Codeforces Username:</label><br>
-    <input type="text" name="codeforces_username"><br><br>
+            <div class="input-group">
+                <i class="fas fa-globe input-icon"></i>
+                <input type="url" name="portfolio_url" placeholder="Portfolio URL">
+            </div>
 
-    <label>CodeChef Username:</label><br>
-    <input type="text" name="codechef_username"><br><br>
+            <label class="section-title">Competitive Platforms</label>
+            <div class="input-group">
+                <i class="fas fa-code input-icon"></i>
+                <input type="text" name="codeforces_username" placeholder="Codeforces Username">
+            </div>
 
-    <label>HackerRank Username:</label><br>
-    <input type="text" name="hackerrank_username"><br><br>
+            <div class="input-group">
+                <i class="fas fa-utensils input-icon"></i>
+                <input type="text" name="codechef_username" placeholder="CodeChef Username">
+            </div>
 
-    <label>Portfolio URL:</label><br>
-    <input type="url" name="portfolio_url"><br><br>
+            <div class="input-group">
+                <i class="fab fa-hackerrank input-icon"></i>
+                <input type="text" name="hackerrank_username" placeholder="HackerRank Username">
+            </div>
 
-    <button type="submit">Save & Sync</button>
-
-</form>
+            <button type="submit">Save & Sync Profile</button>
+        </form>
+    </div>
 
 </body>
+
 </html>

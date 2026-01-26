@@ -1,0 +1,85 @@
+/* Specific overrides for single-column layout */
+body {
+    background: #f6f5f7;
+}
+
+.container-card {
+    background-color: #fff;
+    border-radius: 40px;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+    position: relative;
+    overflow: hidden;
+    width: 500px;
+    max-width: 95%;
+    min-height: auto;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container-card h1 {
+    margin-bottom: 10px;
+    color: #000;
+}
+
+.container-card p {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+form {
+    width: 100%;
+    padding: 0;
+    background: transparent;
+}
+
+.input-group {
+    position: relative;
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+input {
+    width: 100%;
+    padding: 12px 20px 12px 45px;
+    /* Left padding for icon */
+    margin: 0;
+    box-sizing: border-box;
+    background-color: #eee;
+    border: none;
+    border-radius: 10px;
+}
+
+input:focus {
+    background-color: #fff;
+    border: 2px solid #000;
+}
+
+.input-icon {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    /* Left aligned icon */
+    right: auto;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 16px;
+}
+
+button {
+    width: 100%;
+    margin-top: 20px;
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.section-title {
+    align-self: flex-start;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    color: #555;
+    font-family: 'Inter', sans-serif;
+}
