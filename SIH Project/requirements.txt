@@ -1,10 +1,14 @@
 flask
 flask-socketio
-flask-login
 flask-sqlalchemy
+flask-login
 flask-apscheduler
 requests
 pandas
 openpyxl
 python-dotenv
-eventlet  
+eventlet
+undetected-chromedriver
+selenium
+beautifulsoup4
+lxml
