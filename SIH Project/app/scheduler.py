@@ -17,3 +17,10 @@ def sync_all_users(app):
 
         for user in users:
             sync_github_for_user(user)
+
+        # Sync LinkedIn
+        users_li = User.query.filter(User.linkedin_url.isnot(None)).all()
+        from app.services.linkedin_sync_service import sync_linkedin_for_user
+        
+        for user in users_li:
+            sync_linkedin_for_user(user)

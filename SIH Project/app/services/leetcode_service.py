@@ -2,7 +2,7 @@ import requests
 from datetime import datetime
 
 COOKIES = {
-    "LEETCODE_SESSION": "PASTE_VALUE_HERE",
+    "LEETCODE_SESSION": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0MTE4OTQ5LCJ1c2VybmFtZSI6InN1cmFqYXZhIiwiZXhwIjoxNzQxMTA1NTQyfQ.1_2_6029x-5x5_q57r22048815081015101710191018",
     "csrftoken": "PASTE_VALUE_HERE"
 }
 

@@ -58,11 +58,17 @@
         <p>Email: {{ user.email }}</p>
 
         {% if user.linkedin_url %}
-        <p>LinkedIn:
-            <a href="{{ user.linkedin_url }}" target="_blank">
-                {{ user.linkedin_url }}
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <p style="margin: 0;">LinkedIn:
+                <a href="{{ user.linkedin_url }}" target="_blank">
+                    {{ user.linkedin_url }}
+                </a>
+            </p>
+            <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-resync" title="Resync LinkedIn Data">
+                <i class="fas fa-sync-alt"></i> Resync
             </a>
-        </p>
+        </div>
+
         {% endif %}
 
         {% if user.portfolio_url %}
@@ -71,6 +77,168 @@
                 {{ user.portfolio_url }}
             </a>
         </p>
+        {% endif %}
+
+        <hr>
+
+        <!-- ================= LINKEDIN ================= -->
+        <h2>LinkedIn</h2>
+
+        {% if linkedin %}
+        <div class="linkedin-profile">
+            <div class="li-header">
+                <p><strong>{{ linkedin.full_name }}</strong></p>
+                <p class="text-muted">{{ linkedin.headline }}</p>
+                <p class="text-muted"><i class="fas fa-map-marker-alt"></i> {{ linkedin.location }}</p>
+            </div>
+
+            {% if linkedin.about %}
+            <div class="li-about">
+                <h3>About</h3>
+                <p>{{ linkedin.about }}</p>
+            </div>
+            {% endif %}
+
+            {% if linkedin.experience %}
+            <div class="li-experience">
+                <h3>Experience</h3>
+                {% for exp in linkedin.experience %}
+                <div class="li-item">
+                    <p><strong>{{ exp.title }}</strong> at {{ exp.companyName }}</p>
+                    <p class="text-small">{{ exp.startDate }} - {{ exp.endDate }} | {{ exp.location }}</p>
+                    <p>{{ exp.description }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if linkedin.education %}
+            <div class="li-education">
+                <h3>Education</h3>
+                {% for edu in linkedin.education %}
+                <div class="li-item">
+                    <p><strong>{{ edu.schoolName }}</strong></p>
+                    <p>{{ edu.degreeName }}, {{ edu.fieldOfStudy }}</p>
+                    <p class="text-small">{{ edu.startDate }} - {{ edu.endDate }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if linkedin.skills %}
+            <div class="li-skills">
+                <h3>Skills</h3>
+                <div class="skills-container">
+                    {% for skill in linkedin.skills %}
+                    <span class="skill-tag">{{ skill.name }} ({{ skill.endorsements }})</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+
+            {% if linkedin.projects %}
+            <div class="li-projects">
+                <h3>Projects</h3>
+                {% for proj in linkedin.projects %}
+                <div class="li-item">
+                    <p><strong>{{ proj.title }}</strong></p>
+                    <p class="text-small">{{ proj.startDate }} - {{ proj.endDate }}</p>
+                    <p>{{ proj.description }}</p>
+                    {% if proj.url %}
+                    <a href="{{ proj.url }}" target="_blank">View Project</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if linkedin.certifications %}
+            <div class="li-certifications">
+                <h3>Certifications</h3>
+                {% for cert in linkedin.certifications %}
+                <div class="li-item">
+                    <p><strong>{{ cert.name }}</strong></p>
+                    <p>{{ cert.issuingOrganization }}</p>
+                    <p class="text-small">Issued: {{ cert.issueDate }}{% if cert.expirationDate %} - Expires: {{
+                        cert.expirationDate }}{% endif %}</p>
+                    {% if cert.credentialUrl %}
+                    <a href="{{ cert.credentialUrl }}" target="_blank">View Credential</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if linkedin.languages %}
+            <div class="li-languages">
+                <h3>Languages</h3>
+                <ul>
+                    {% for lang in linkedin.languages %}
+                    <li><strong>{{ lang.name }}</strong>: {{ lang.proficiency }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if linkedin.posts %}
+            <div class="li-posts">
+                <h3>Recent Posts</h3>
+                {% for post in linkedin.posts %}
+                <div class="li-post-item">
+                    <p class="text-small">{{ post.posted_at.relative }}</p>
+                    <p>{{ post.text[:200] }}...</p>
+                    {% if post.media and post.media.images %}
+                    <div class="post-images">
+                        {% for img in post.media.images %}
+                        <img src="{{ img.url }}" height="100" />
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <p class="text-small">
+                        <i class="fas fa-thumbs-up"></i> {{ post.stats.like }}
+                        <i class="fas fa-comment"></i> {{ post.stats.comments }}
+                    </p>
+                    {% if post.url %}
+                    <a href="{{ post.url }}" target="_blank">View Post</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% endif %}
+        </div>
+
+
+
+        {% else %}
+        {% if user.linkedin_url %}
+        {% if user.linkedin_sync_status == 'failed' %}
+        <div class="linkedin-error" style="text-align: center; padding: 20px; color: #dc2626;">
+            <h3>LinkedIn Sync Failed</h3>
+            <p>We couldn't fetch data from your LinkedIn profile.</p>
+            <p>Please note: Scraping LinkedIn profiles requires correct cookies or public visibility.</p>
+        </div>
+        {% else %}
+        <div class="linkedin-loading" style="text-align: center; padding: 20px;">
+            <div class="loader-ring"></div>
+            <p>Fetching LinkedIn Data... This may take a minute.</p>
+            <script>
+                setInterval(() => {
+                    fetch(window.location.href)
+                        .then(res => res.text())
+                        .then(html => {
+                            if (html.includes("LinkedIn Sync Failed") || !html.includes("Fetching LinkedIn Data")) {
+                                window.location.reload();
+                            }
+                        });
+                }, 4000);
+            </script>
+        </div>
+        {% endif %}
+        {% else %}
+        <p>LinkedIn not connected.</p>
+        {% endif %}
         {% endif %}
 
         <hr>
@@ -174,35 +342,7 @@
             </p>
         </div>
 
-        <style>
-            .loader-ring {
-                display: inline-block;
-                width: 40px;
-                height: 40px;
-            }
 
-            .loader-ring:after {
-                content: " ";
-                display: block;
-                width: 32px;
-                height: 32px;
-                margin: 4px;
-                border-radius: 50%;
-                border: 4px solid #3b82f6;
-                border-color: #3b82f6 transparent #3b82f6 transparent;
-                animation: ring 1.2s linear infinite;
-            }
-
-            @keyframes ring {
-                0% {
-                    transform: rotate(0deg);
-                }
-
-                100% {
-                    transform: rotate(360deg);
-                }
-            }
-        </style>
 
         <script>
             // Check every 3 seconds if data has arrived or failed

@@ -375,3 +375,86 @@ body {
 body.nav-scrolled .content-wrapper {
   margin-left: 100px;
 }
+
+/* ========== RESYNC BUTTON ========== */
+.btn-resync {
+    background: #0077b5;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.8em;
+    transition: background 0.3s;
+}
+
+.btn-resync:hover {
+    background: #005582;
+}
+
+/* ========== LINKEDIN POSTS ========== */
+.li-post-item {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background: #f9f9f9;
+}
+
+.post-images img {
+    margin-right: 5px;
+    border-radius: 4px;
+}
+
+/* ========== LINKEDIN ITEMS ========== */
+.li-item {
+    margin-bottom: 15px;
+    border-left: 2px solid #ccc;
+    padding-left: 10px;
+}
+
+.text-small {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.skill-tag {
+    display: inline-block;
+    background: #e0e0e0;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin: 2px;
+    font-size: 0.85em;
+}
+
+/* ========== LOADERS ========== */
+.github-loading, .linkedin-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.loader-ring {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+}
+
+.loader-ring:after {
+    content: " ";
+    display: block;
+    width: 32px;
+    height: 32px;
+    margin: 4px;
+    border-radius: 50%;
+    border: 4px solid #3b82f6;
+    border-color: #3b82f6 transparent #3b82f6 transparent;
+    animation: ring 1.2s linear infinite;
+}
+
+@keyframes ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

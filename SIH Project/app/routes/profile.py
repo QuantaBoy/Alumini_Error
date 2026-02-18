@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, make_response
 from flask_login import login_required, current_user
-from app.models import GithubProfile, User
+from app.models import GithubProfile, LinkedinProfile, User
 from app.db import db
 from app.services.github_sync_service import sync_github_for_user
 
@@ -35,10 +35,18 @@ def profile_page():
             reverse=True
         )
 
+    linkedin = (
+        LinkedinProfile.query
+        .filter_by(user_id=user.id)
+        .order_by(LinkedinProfile.synced_at.desc())
+        .first()
+    )
+
     response = make_response(render_template(
         "profile.html",
         user=user,
         github=github,
+        linkedin=linkedin,
         leetcode=None,
         codeforces=None,
         codechef=None,
@@ -105,6 +113,70 @@ def complete_profile():
             thread = threading.Thread(target=bg_sync, args=(real_app, user.id))
             thread.start()
 
+        # 🔗 Trigger LinkedIn sync in BACKGROUND
+        if user.linkedin_url:
+            import threading
+            from flask import current_app
+            
+            # Capture real app object to pass to thread
+            real_app_li = current_app._get_current_object()
+
+            def bg_sync_linkedin(app_obj, u_id):
+                with app_obj.app_context():
+                    from app.models import User
+                    from app.services.linkedin_sync_service import sync_linkedin_for_user
+                    # Re-query user to avoid session issues
+                    u = User.query.get(u_id)
+                    if u:
+                        print(f"Starting background LinkedIn sync for user {u.id}...")
+                        try:
+                            sync_linkedin_for_user(u)
+                        except Exception as e:
+                            print(f"Error calling sync service: {e}")
+                        print(f"Background LinkedIn sync finished. Status: {u.linkedin_sync_status}")
+                    
+            linkedin_thread = threading.Thread(target=bg_sync_linkedin, args=(real_app_li, user.id))
+            linkedin_thread.start()
+
         return redirect(url_for("profile.profile_page"))
 
     return render_template("complete_profile.html")
+
+
+# =========================
+# RESYNC LINKEDIN
+# =========================
+@profile_bp.route("/resync-linkedin")
+@login_required
+def resync_linkedin():
+    user = current_user
+    if not user.linkedin_url:
+        return redirect(url_for("profile.profile_page"))
+
+    # Reset status
+    user.linkedin_sync_status = "pending"
+    db.session.commit()
+
+    # Trigger Thread
+    import threading
+    from flask import current_app
+    
+    real_app_li = current_app._get_current_object()
+
+    def bg_sync_linkedin(app_obj, u_id):
+        with app_obj.app_context():
+            from app.models import User
+            from app.services.linkedin_sync_service import sync_linkedin_for_user
+            u = User.query.get(u_id)
+            if u:
+                print(f"Starting background LinkedIn RESYNC for user {u.id}...")
+                try:
+                    sync_linkedin_for_user(u)
+                except Exception as e:
+                     print(f"Error calling sync service: {e}")
+                print(f"Background LinkedIn sync finished. Status: {u.linkedin_sync_status}")
+    
+    linkedin_thread = threading.Thread(target=bg_sync_linkedin, args=(real_app_li, user.id))
+    linkedin_thread.start()
+
+    return redirect(url_for("profile.profile_page"))

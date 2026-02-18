@@ -25,6 +25,10 @@ class User(UserMixin, db.Model):
 
     last_github_sync = db.Column(db.DateTime)
     github_sync_status = db.Column(db.String(20))
+    
+    last_linkedin_sync = db.Column(db.DateTime)
+    linkedin_sync_status = db.Column(db.String(20))
+
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -40,6 +44,39 @@ class User(UserMixin, db.Model):
         lazy=True,
         cascade="all, delete-orphan"
     )
+
+    linkedin_profiles = db.relationship(
+        "LinkedinProfile",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+class LinkedinProfile(db.Model):
+    __tablename__ = "linkedin_profiles"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    
+    synced_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    linkedin_url = db.Column(db.String(255))
+    full_name = db.Column(db.String(120))
+    headline = db.Column(db.String(255))
+    about = db.Column(db.Text)
+    location = db.Column(db.String(120))
+    connections = db.Column(db.String(50))
+    followers = db.Column(db.String(50))
+    
+    # JSON fields for structured data
+    experience = db.Column(JSON)
+    education = db.Column(JSON)
+    projects = db.Column(JSON)
+    skills = db.Column(JSON)
+    languages = db.Column(JSON)
+    certifications = db.Column(JSON)
+    posts = db.Column(JSON)
+
 
 class GithubProfile(db.Model):
     __tablename__ = "github_profiles"
