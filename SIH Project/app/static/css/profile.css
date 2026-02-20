@@ -1440,7 +1440,7 @@ body.nav-scrolled .profile-container {
   border-radius: 50%;
   /* The conic-gradient background forms the chart segments */
   /* Ensure it has a fallback background */
-  background: #e0e0e0;
+  background: var(--chart-bg, #e0e0e0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1496,6 +1496,7 @@ body.nav-scrolled .profile-container {
   height: 12px;
   border-radius: 50%;
   flex-shrink: 0;
+  background: var(--item-color, #ccc);
 }
 
 .legend-text {

@@ -396,7 +396,7 @@
                        We will use a conic-gradient for the chart.
                     -->
                         {% if skills_data %}
-                        <div class="donut-chart" style="background: {{ skills_gradient }};">
+                        <div class="donut-chart" style="--chart-bg: {{ skills_gradient }};">
                             <div class="donut-inner">
                                 <span class="donut-percent">{{ skills_data.values()|first | round | int }}%</span>
                                 <span class="donut-label">{{ skills_data.keys()|first }}</span>
@@ -406,7 +406,7 @@
                         <div class="chart-legend">
                             {% for item in skills_legend %}
                             <div class="legend-item">
-                                <span class="legend-dot" style="background: {{ item.color }};"></span>
+                                <span class="legend-dot" style="--item-color: {{ item.color }};"></span>
                                 <span class="legend-text">{{ item.lang }} ({{ item.percent }}%)</span>
                             </div>
                             {% endfor %}
