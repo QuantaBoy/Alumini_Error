@@ -5,14 +5,14 @@
     <meta charset="UTF-8">
     <title>{{ user.username }} | Profile</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}?v=5" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}?v=6" />
 </head>
 
 <body>
-    <!-- NAVBAR -->
+    <!-- NAVBAR (Keep existing navbar logic) -->
     <nav class="navbar">
         <div class="nav-left">
-            <i class="fas fa-bars nav-menu-icon"></i>
+            <i class="fas fa-bars nav-menu-icon" title="Menu"></i>
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" placeholder="Search" />
@@ -27,8 +27,12 @@
             <a href="#" data-tooltip="Events"><i class="fas fa-calendar-alt"></i></a>
             <a href="#" data-tooltip="Membership"><i class="fas fa-id-card"></i></a>
             <a href="#" data-tooltip="AI Tools"><i class="fas fa-robot"></i></a>
+
+            <!-- Gap Separator (Sidebar Only) -->
+            <a href="#" class="menu-separator hidden-desktop"></a>
         </div>
         <div class="nav-right">
+            <!-- Bottom/Right Group Icons -->
             <a href="#" data-tooltip="Alumni Club" class="nav-icon"><i class="fas fa-users"></i></a>
             <a href="#" data-tooltip="Notifications" class="nav-icon notification-bell"><i class="fas fa-bell"></i></a>
 
@@ -48,360 +52,612 @@
                         </a>
                     </div>
                 </div>
+
+                <span class="nav-profile-name" style="display: none; color: white; font-size: 12px; margin-top: 5px;">
+                    {% if user %}{{ user.username }}{% else %}User{% endif %}
+                </span>
             </div>
         </div>
     </nav>
 
-    <div class="content-wrapper">
-        <!-- ================= USER INFO ================= -->
-        <h1>{{ user.username }}</h1>
-        <p>Email: {{ user.email }}</p>
+    <div class="profile-container">
+        <!-- 1. HEADER CARD -->
+        <div class="profile-card profile-header-card">
+            <div class="cover-photo">
+                <div class="edit-cover-btn"><i class="fas fa-camera"></i></div>
+            </div>
+            <div class="profile-avatar-container">
+                <img src="{{ url_for('static', filename='images/avatar_3d.png') }}" class="profile-avatar"
+                    alt="Avatar" />
+            </div>
 
-        {% if user.linkedin_url %}
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <p style="margin: 0;">LinkedIn:
-                <a href="{{ user.linkedin_url }}" target="_blank">
-                    {{ user.linkedin_url }}
-                </a>
-            </p>
-            <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-resync" title="Resync LinkedIn Data">
-                <i class="fas fa-sync-alt"></i> Resync
-            </a>
+            <div class="header-info">
+                <div class="info-left">
+                    <div class="full-name">
+                        {{ linkedin.full_name if linkedin else user.username }}
+                        {% if linkedin %}<i class="fas fa-crown verified-badge" title="Alumni"></i>{% endif %}
+                    </div>
+                    <p class="headline">{{ linkedin.headline if linkedin else 'Student at University' }}</p>
+                    <p class="location">{{ linkedin.location if linkedin else 'Location N/A' }}</p>
+
+                    <p class="connections-text">
+                        {{ linkedin.connections if linkedin else '0' }} Connections
+                    </p>
+
+                    <div class="header-actions">
+                        <a href="{{ url_for('profile.complete_profile') }}" class="btn-primary-custom"
+                            style="background:#000; color:#fff;">
+                            <i class="fas fa-pen"></i> Edit Profile
+                        </a>
+                        <!-- Resync Buttons -->
+                        {% if user.linkedin_url %}
+                        <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-primary-custom"
+                            title="Resync LinkedIn">
+                            <i class="fas fa-sync-alt"></i> LinkedIn
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="info-right">
+                    <!-- Education Logos (Mockup or real if available) -->
+                    <div class="institution-logo">
+                        <span style="font-size: 2rem; color: #1a237e;"><i class="fas fa-university"></i></span>
+                        <div>Chennai Institute of Technology</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
+        <!-- 2. ABOUT -->
+        {% if linkedin and linkedin.about %}
+        <div class="profile-card card-padding">
+            <h3 class="section-title">About</h3>
+            <div class="about-text">
+                {{ linkedin.about }}
+            </div>
+        </div>
         {% endif %}
 
-        {% if user.portfolio_url %}
-        <p>Portfolio:
-            <a href="{{ user.portfolio_url }}" target="_blank">
-                {{ user.portfolio_url }}
-            </a>
-        </p>
-        {% endif %}
+        <div class="profile-content-grid">
+            <!-- ================= LEFT / MAIN COLUMN ================= -->
+            <div class="main-column">
 
-        <hr>
+                <!-- 3. ACTIVITY SNAPSHOT (CP STATS) -->
+                <div class="profile-card card-padding">
+                    <h3 class="section-title">Activity Snapshot</h3>
+                    <div class="activity-grid">
 
-        <!-- ================= LINKEDIN ================= -->
-        <h2>LinkedIn</h2>
+                        <!-- Github Card -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <i class="fab fa-github"></i>
+                                <span class="stat-title">Github</span>
+                            </div>
+                            <div class="stat-metrics">
+                                <div class="metric-row">
+                                    <span>Repositories</span>
+                                    <span class="metric-val">{{ github.activity_summary.total_repos if github else 0
+                                        }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Active</span>
+                                    <span class="metric-val">{{ github.activity_summary.active_repos if github else 0
+                                        }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Impact Score</span>
+                                    <span class="metric-val" style="color: green;">
+                                        {{ github.developer_score.impact if github else '0' }} <i
+                                            class="fas fa-arrow-up"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="stat-footer">View Contribution History ></div>
+                        </div>
 
-        {% if linkedin %}
-        <div class="linkedin-profile">
-            <div class="li-header">
-                <p><strong>{{ linkedin.full_name }}</strong></p>
-                <p class="text-muted">{{ linkedin.headline }}</p>
-                <p class="text-muted"><i class="fas fa-map-marker-alt"></i> {{ linkedin.location }}</p>
-            </div>
+                        <!-- Leetcode Card -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <i class="fas fa-terminal" style="color: #ffa116;"></i>
+                                <span class="stat-title">Leetcode</span>
+                            </div>
+                            <div class="stat-metrics">
+                                {% if leetcode and "error" not in leetcode %}
+                                <div class="metric-row">
+                                    <span>Total Solved</span>
+                                    <span class="metric-val">{{ leetcode.total_solved }}</span>
+                                </div>
+                                <div style="display:flex; gap:5px; margin-top:5px;">
+                                    <span class="badge-easy">Easy: {{ leetcode.easy_solved }}</span>
+                                    <span class="badge-medium">Med: {{ leetcode.medium_solved }}</span>
+                                    <span class="badge-hard">Hard: {{ leetcode.hard_solved }}</span>
+                                </div>
+                                {% else %}
+                                <div class="metric-row"><span class="metric-val">Not Connected</span></div>
+                                {% endif %}
+                            </div>
+                            <div class="stat-footer">View Solved Problems ></div>
+                        </div>
 
-            {% if linkedin.about %}
-            <div class="li-about">
-                <h3>About</h3>
-                <p>{{ linkedin.about }}</p>
-            </div>
-            {% endif %}
+                        <!-- CodeChef Card -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <i class="fas fa-utensils" style="color: #5d4037;"></i>
+                                <span class="stat-title">CodeChef</span>
+                            </div>
+                            <div class="stat-metrics">
+                                {% if codechef and "error" not in codechef %}
+                                <div class="metric-row">
+                                    <span>Current Rating</span>
+                                    <span class="metric-val">{{ codechef['Current Rating'] }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Global Rank</span>
+                                    <span class="metric-val">{{ codechef['Global Rank'] }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Total Solved</span>
+                                    <span class="metric-val">{{ codechef['Total Problems Solved'] }}</span>
+                                </div>
+                                {% else %}
+                                <div class="metric-row"><span class="metric-val">Not Connected</span></div>
+                                {% endif %}
+                            </div>
+                            <div class="stat-footer">View All Courses ></div>
+                        </div>
 
-            {% if linkedin.experience %}
-            <div class="li-experience">
-                <h3>Experience</h3>
-                {% for exp in linkedin.experience %}
-                <div class="li-item">
-                    <p><strong>{{ exp.title }}</strong> at {{ exp.companyName }}</p>
-                    <p class="text-small">{{ exp.startDate }} - {{ exp.endDate }} | {{ exp.location }}</p>
-                    <p>{{ exp.description }}</p>
+                        <!-- Codeforces Card -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <i class="fas fa-chart-line" style="color: #1f8acb;"></i>
+                                <span class="stat-title">CodeForces</span>
+                            </div>
+                            <div class="stat-metrics">
+                                {% if codeforces and "error" not in codeforces %}
+                                <div class="metric-row">
+                                    <span>Rating</span>
+                                    <span class="metric-val">{{ codeforces.rating }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Max Rating</span>
+                                    <span class="metric-val">{{ codeforces.max_rating }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Rank</span>
+                                    <span class="metric-val">{{ codeforces.rank }}</span>
+                                </div>
+                                {% else %}
+                                <div class="metric-row"><span class="metric-val">Not Connected</span></div>
+                                {% endif %}
+                            </div>
+                            <div class="stat-footer">View Contest Performance ></div>
+                        </div>
+
+                    </div>
                 </div>
-                {% endfor %}
-            </div>
-            {% endif %}
 
-            {% if linkedin.education %}
-            <div class="li-education">
-                <h3>Education</h3>
-                {% for edu in linkedin.education %}
-                <div class="li-item">
-                    <p><strong>{{ edu.schoolName }}</strong></p>
-                    <p>{{ edu.degreeName }}, {{ edu.fieldOfStudy }}</p>
-                    <p class="text-small">{{ edu.startDate }} - {{ edu.endDate }}</p>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
+                <!-- 4. POST ACTIVITY (Dynamic) -->
+                <div class="post-activity-section">
+                    <h3 class="section-title">Post Activity</h3>
 
-            {% if linkedin.skills %}
-            <div class="li-skills">
-                <h3>Skills</h3>
-                <div class="skills-container">
-                    {% for skill in linkedin.skills %}
-                    <span class="skill-tag">{{ skill.name }} ({{ skill.endorsements }})</span>
+                    {% if linkedin and linkedin.posts %}
+                    {% for post in linkedin.posts[:5] %} {# Limit to 5 recent posts #}
+                    <div class="post-card">
+                        <div class="post-header">
+                            <div class="post-user">
+                                <img src="{{ user.profile_pic or url_for('static', filename='images/avatar_3d.png') }}"
+                                    class="post-user-img" alt="User">
+                                <div class="post-user-info">
+                                    <h4>{{ linkedin.full_name }}</h4>
+                                    <span class="post-time">{{ post.posted_at.relative if post.posted_at else 'Recently'
+                                        }}</span>
+                                </div>
+                            </div>
+                            <button class="btn-add-network">Follow <i class="fas fa-plus-circle"></i></button>
+                        </div>
+
+                        <div class="post-content">
+                            <p class="post-text">{{ post.text | truncate(200) }}</p>
+
+                            {% if post.media and post.media.images %}
+                            <div class="post-image-container">
+                                {% set img_url = post.media.images[0].url %}
+                                <img src="{{ img_url }}" class="post-image" alt="Post Media"
+                                    onerror="this.style.display='none'">
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="post-stats">
+                            <div class="stat-group">
+                                <span class="post-stat-item" title="Likes">
+                                    <i class="fas fa-heart like-heart"></i> {{ post.stats.like }}
+                                </span>
+                                <span class="post-stat-item" title="Comments">
+                                    <i class="far fa-comment comment-bubble"></i> {{ post.stats.comments }}
+                                </span>
+                                <span class="post-stat-item" title="Reposts">
+                                    <i class="fas fa-retweet share-plane"></i> {{ post.stats.reposts }}
+                                </span>
+                            </div>
+                            <i class="far fa-bookmark bookmark-icon"></i>
+                        </div>
+
+                        <div class="post-comment-section">
+                            <img src="{{ user.profile_pic or url_for('static', filename='images/avatar_3d.png') }}"
+                                class="post-user-img" style="width: 35px; height: 35px;" />
+                            <div class="comment-input-box">
+                                <input type="text" class="comment-input" placeholder="Write a comment..." />
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
-                </div>
-            </div>
-            {% endif %}
 
-
-            {% if linkedin.projects %}
-            <div class="li-projects">
-                <h3>Projects</h3>
-                {% for proj in linkedin.projects %}
-                <div class="li-item">
-                    <p><strong>{{ proj.title }}</strong></p>
-                    <p class="text-small">{{ proj.startDate }} - {{ proj.endDate }}</p>
-                    <p>{{ proj.description }}</p>
-                    {% if proj.url %}
-                    <a href="{{ proj.url }}" target="_blank">View Project</a>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if linkedin.certifications %}
-            <div class="li-certifications">
-                <h3>Certifications</h3>
-                {% for cert in linkedin.certifications %}
-                <div class="li-item">
-                    <p><strong>{{ cert.name }}</strong></p>
-                    <p>{{ cert.issuingOrganization }}</p>
-                    <p class="text-small">Issued: {{ cert.issueDate }}{% if cert.expirationDate %} - Expires: {{
-                        cert.expirationDate }}{% endif %}</p>
-                    {% if cert.credentialUrl %}
-                    <a href="{{ cert.credentialUrl }}" target="_blank">View Credential</a>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            {% if linkedin.languages %}
-            <div class="li-languages">
-                <h3>Languages</h3>
-                <ul>
-                    {% for lang in linkedin.languages %}
-                    <li><strong>{{ lang.name }}</strong>: {{ lang.proficiency }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if linkedin.posts %}
-            <div class="li-posts">
-                <h3>Recent Posts</h3>
-                {% for post in linkedin.posts %}
-                <div class="li-post-item">
-                    <p class="text-small">{{ post.posted_at.relative }}</p>
-                    <p>{{ post.text[:200] }}...</p>
-                    {% if post.media and post.media.images %}
-                    <div class="post-images">
-                        {% for img in post.media.images %}
-                        <img src="{{ img.url }}" height="100" />
-                        {% endfor %}
+                    <a href="{{ linkedin.linkedin_url }}" target="_blank" class="see-all-btn"
+                        style="border-radius: 12px; margin-bottom: 20px; border: 1px solid #e0e0e0;">
+                        View All Posts on LinkedIn
+                    </a>
+                    {% else %}
+                    <div class="post-card" style="text-align: center; padding: 40px; color: #666;">
+                        <i class="fab fa-linkedin" style="font-size: 3rem; color: #0077b5; margin-bottom: 15px;"></i>
+                        <p>No recent posts found. Resync your LinkedIn profile to fetch activity.</p>
+                        <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-primary"
+                            style="margin-top: 10px; display: inline-block;">Sync Now</a>
                     </div>
                     {% endif %}
-                    <p class="text-small">
-                        <i class="fas fa-thumbs-up"></i> {{ post.stats.like }}
-                        <i class="fas fa-comment"></i> {{ post.stats.comments }}
-                    </p>
-                    {% if post.url %}
-                    <a href="{{ post.url }}" target="_blank">View Post</a>
-                    {% endif %}
                 </div>
-                {% endfor %}
+
+                <!-- 5. EXPERIENCE (Renumbered) -->
+                {% if linkedin and linkedin.experience %}
+                <div class="profile-card">
+                    <div class="card-padding">
+                        <h3 class="section-title">Experience</h3>
+
+                        {% for exp in linkedin.experience %}
+                        <div class="list-item">
+                            <div class="item-logo">
+                                <img src="{{ url_for('static', filename='images/company_placeholder.png') }}"
+                                    onerror="this.src='https://cdn-icons-png.flaticon.com/512/3061/3061341.png'"
+                                    alt="Logo">
+                            </div>
+                            <div class="item-content">
+                                <h3>{{ exp.title }}</h3>
+                                <p class="item-subtitle">{{ exp.companyName }}</p>
+                                <p class="item-meta">{{ exp.startDate }} - {{ exp.endDate }} | {{ exp.location }}</p>
+                                <p class="item-desc">{{ exp.description }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="#" class="see-all-btn">View All Experience <i class="fas fa-arrow-right"></i></a>
+                </div>
+                {% endif %}
+
+                <!-- 6. EDUCATION -->
+                {% if linkedin and linkedin.education %}
+                <div class="profile-card">
+                    <div class="card-padding">
+                        <h3 class="section-title">Education</h3>
+                        {% for edu in linkedin.education %}
+                        <div class="list-item">
+                            <div class="item-logo">
+                                <img src="{{ url_for('static', filename='images/uni_placeholder.png') }}"
+                                    onerror="this.src='https://cdn-icons-png.flaticon.com/512/2997/2997235.png'"
+                                    alt="Logo">
+                            </div>
+                            <div class="item-content">
+                                <h3>{{ edu.schoolName }}</h3>
+                                <p class="item-subtitle">{{ edu.degreeName }} {% if edu.fieldOfStudy %}, {{
+                                    edu.fieldOfStudy
+                                    }}{% endif %}</p>
+                                <p class="item-meta">{{ edu.startDate }} - {{ edu.endDate }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="#" class="see-all-btn">View All Education <i class="fas fa-arrow-right"></i></a>
+                </div>
+                {% endif %}
+
+                <!-- 7. CERTIFICATIONS -->
+                {% if linkedin and linkedin.certifications %}
+                <div class="profile-card">
+                    <div class="card-padding">
+                        <h3 class="section-title">Certifications</h3>
+                        {% for cert in linkedin.certifications %}
+                        <div class="list-item">
+                            <div class="item-logo" style="border-radius: 0; background: none;">
+                                <i class="fas fa-certificate" style="font-size: 2rem; color: #FFC107;"></i>
+                            </div>
+                            <div class="item-content">
+                                <h3>{{ cert.name }}</h3>
+                                <p class="item-subtitle">{{ cert.issuingOrganization }}</p>
+                                <p class="item-meta">Issued {{ cert.issueDate }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="#" class="see-all-btn">View All Certificates <i class="fas fa-arrow-right"></i></a>
+                </div>
+                {% endif %}
+
             </div>
 
-            {% endif %}
+            <!-- ================= RIGHT SIDEBAR ================= -->
+            <div class="right-sidebar">
+
+                <!-- 1. Skills / Capability (MOVED TO TOP) -->
+                <div class="profile-card card-padding">
+                    <h3 class="section-title" style="font-size: 1rem;">Skills Analysis</h3>
+                    <!-- Donut Chart Container -->
+                    <div class="donut-chart-container">
+                        <!-- 
+                       We will use a conic-gradient for the chart.
+                    -->
+                        {% if skills_data %}
+                        <div class="donut-chart" style="background: {{ skills_gradient }};">
+                            <div class="donut-inner">
+                                <span class="donut-percent">{{ skills_data.values()|first | round | int }}%</span>
+                                <span class="donut-label">{{ skills_data.keys()|first }}</span>
+                            </div>
+                        </div>
+
+                        <div class="chart-legend">
+                            {% for item in skills_legend %}
+                            <div class="legend-item">
+                                <span class="legend-dot" style="background: {{ item.color }};"></span>
+                                <span class="legend-text">{{ item.lang }} ({{ item.percent }}%)</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <!-- Fallback / Empty State -->
+                        <div class="donut-chart" style="background: conic-gradient(#e0e0e0 0deg 360deg);">
+                            <div class="donut-inner">
+                                <span class="donut-percent">0%</span>
+                                <span class="donut-label">N/A</span>
+                            </div>
+                        </div>
+                        <p style="text-align: center; color: #666; font-size: 0.85rem; margin-top: 10px;">
+                            Sync GitHub to see skills.
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="capability-list">
+                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 5px;">Capability Snapshot</h3>
+
+                        {% if github and github.developer_score %}
+                        {% set score = github.developer_score %}
+
+                        <!-- 1. CONSISTENCY METRIC -->
+                        <div class="capability-item">
+                            <div class="cap-icon" style="color: #4CAF50;">
+                                {% if score.consistency >= 0.7 %}
+                                <i class="fas fa-fire-alt"></i>
+                                {% elif score.consistency >= 0.4 %}
+                                <i class="fas fa-check-circle"></i>
+                                {% else %}
+                                <i class="fas fa-clock"></i>
+                                {% endif %}
+                            </div>
+                            <div class="cap-text">
+                                <h4>
+                                    {% if score.consistency >= 0.7 %}
+                                    Highly Consistent
+                                    {% elif score.consistency >= 0.4 %}
+                                    Active Developer
+                                    {% else %}
+                                    Occasional Coder
+                                    {% endif %}
+                                </h4>
+                                <p>
+                                    {% if score.consistency >= 0.7 %}
+                                    Daily Contributions
+                                    {% elif score.consistency >= 0.4 %}
+                                    Regular Commits
+                                    {% else %}
+                                    Sporadic Activity
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 2. IMPACT / ENGAGEMENT METRIC -->
+                        <div class="capability-item">
+                            <div class="cap-icon" style="color: #000;">
+                                {% if score.impact >= 0.6 %}
+                                <i class="fas fa-star"></i>
+                                {% elif score.impact >= 0.3 %}
+                                <i class="fas fa-users"></i>
+                                {% else %}
+                                <i class="fas fa-seedling"></i>
+                                {% endif %}
+                            </div>
+                            <div class="cap-text">
+                                <h4>
+                                    {% if score.impact >= 0.6 %}
+                                    High Impact
+                                    {% elif score.impact >= 0.3 %}
+                                    Engaged Contributor
+                                    {% else %}
+                                    Growing Portfolio
+                                    {% endif %}
+                                </h4>
+                                <p>
+                                    {% if score.impact >= 0.6 %}
+                                    Open Source Leader
+                                    {% elif score.impact >= 0.3 %}
+                                    Community Participant
+                                    {% else %}
+                                    Personal Projects
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 3. DEPTH / LEARNING METRIC -->
+                        <div class="capability-item">
+                            <div class="cap-icon" style="color: #FF9800;">
+                                {% if score.depth >= 0.7 %}
+                                <i class="fas fa-brain"></i>
+                                {% elif score.depth >= 0.4 %}
+                                <i class="fas fa-layer-group"></i>
+                                {% else %}
+                                <i class="fas fa-rocket"></i>
+                                {% endif %}
+                            </div>
+                            <div class="cap-text">
+                                <h4>
+                                    {% if score.depth >= 0.7 %}
+                                    Subject Matter Expert
+                                    {% elif skills_data|length > 4 %}
+                                    Polyglot Developer
+                                    {% else %}
+                                    Focused Learner
+                                    {% endif %}
+                                </h4>
+                                <p>
+                                    {% if score.depth >= 0.7 %}
+                                    Deep Technical Knowledge
+                                    {% elif skills_data|length > 4 %}
+                                    Broad Tech Stack
+                                    {% else %}
+                                    Specializing Skills
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        {% else %}
+                        <!-- Fallback / Empty State -->
+                        <div style="text-align:center; padding: 20px; color:#999; font-size: 0.9rem;">
+                            <i class="fab fa-github" style="font-size: 24px; margin-bottom: 8px;"></i>
+                            <p>Sync GitHub to generate snapshot.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 2. Post Analytics (MOVED BELOW SKILLS) -->
+                <div class="sidebar-section">
+                    <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 15px;">Post Analytics</h3>
+
+                    <div class="analytics-graph">
+                        <div class="graph-title">Engagement Rate</div>
+                        <div class="graph-value">{{ analytics.get('engagement_rate', 0) }}%</div>
+
+                        <!-- Simple CSS Graph (Visual Only) -->
+                        <div class="graph-line-container">
+                            <div class="graph-point" style="height: 20%;"></div>
+                            <div class="graph-point" style="height: 35%;"></div>
+                            <div class="graph-point" style="height: 30%;"></div>
+                            <div class="graph-point" style="height: 50%;"></div>
+                            <div class="graph-point" style="height: 45%;"></div>
+                            <div class="graph-point" style="height: 70%;"></div>
+                            <div class="graph-point" style="height: 80%;"></div>
+                            <div class="graph-point" style="height: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="analytics-stat-row">
+                        <div class="stat-icon-circle icon-heart"><i class="fas fa-heart"></i></div>
+                        <span class="analytics-label">Total Likes</span>
+                        <span class="analytics-val">{{ analytics.get('likes', 0) }}</span>
+                    </div>
+
+                    <div class="analytics-stat-row">
+                        <div class="stat-icon-circle icon-comment"><i class="fas fa-comment-dots"></i></div>
+                        <span class="analytics-label">Comments</span>
+                        <span class="analytics-val">{{ analytics.get('comments', 0) }}</span>
+                    </div>
+
+                    <div class="analytics-stat-row">
+                        <div class="stat-icon-circle icon-share"><i class="fas fa-share"></i></div>
+                        <span class="analytics-label">Total Share</span>
+                        <span class="analytics-val">{{ analytics.get('shares', 0) }}</span>
+                    </div>
+
+                    <div class="analytics-stat-row">
+                        <div class="stat-icon-circle icon-eye"><i class="fas fa-eye"></i></div>
+                        <span class="analytics-label">Impressions</span>
+                        <span class="analytics-val">{{ analytics.get('impressions', 0) }}</span>
+                    </div>
+
+                    <div class="analytics-stat-row">
+                        <div class="stat-icon-circle icon-reach"><i class="fas fa-users"></i></div>
+                        <span class="analytics-label">Reach</span>
+                        <span class="analytics-val">{{ analytics.get('reach', 0) }}</span>
+                    </div>
+                </div>
+
+                <!-- Suggested People -->
+                <div class="profile-card card-padding">
+                    <h3 class="section-title" style="font-size: 1rem;">Suggested For You</h3>
+
+                    <!-- Mockup Suggestions -->
+                    <div class="suggestion-item">
+                        <div class="sugg-user">
+                            <img src="https://ui-avatars.com/api/?name=Tom+R&background=FFC107&color=fff"
+                                class="sugg-img" />
+                            <div class="sugg-info">
+                                <h4>Tom</h4>
+                                <p>Suggested for you</p>
+                            </div>
+                        </div>
+                        <button class="btn-connect-sm">Connect</button>
+                    </div>
+
+                    <div class="suggestion-item">
+                        <div class="sugg-user">
+                            <img src="https://ui-avatars.com/api/?name=Keny+D&background=E91E63&color=fff"
+                                class="sugg-img" />
+                            <div class="sugg-info">
+                                <h4>Keny</h4>
+                                <p>Suggested for you</p>
+                            </div>
+                        </div>
+                        <button class="btn-connect-sm">Connect</button>
+                    </div>
+
+                    <div class="suggestion-item">
+                        <div class="sugg-user">
+                            <img src="https://ui-avatars.com/api/?name=Tara+S&background=9C27B0&color=fff"
+                                class="sugg-img" />
+                            <div class="sugg-info">
+                                <h4>Tara</h4>
+                                <p>Followed by mobee</p>
+                            </div>
+                        </div>
+                        <button class="btn-connect-sm">Connect</button>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
-
-
-
-        {% else %}
-        {% if user.linkedin_url %}
-        {% if user.linkedin_sync_status == 'failed' %}
-        <div class="linkedin-error" style="text-align: center; padding: 20px; color: #dc2626;">
-            <h3>LinkedIn Sync Failed</h3>
-            <p>We couldn't fetch data from your LinkedIn profile.</p>
-            <p>Please note: Scraping LinkedIn profiles requires correct cookies or public visibility.</p>
-        </div>
-        {% else %}
-        <div class="linkedin-loading" style="text-align: center; padding: 20px;">
-            <div class="loader-ring"></div>
-            <p>Fetching LinkedIn Data... This may take a minute.</p>
-            <script>
-                setInterval(() => {
-                    fetch(window.location.href)
-                        .then(res => res.text())
-                        .then(html => {
-                            if (html.includes("LinkedIn Sync Failed") || !html.includes("Fetching LinkedIn Data")) {
-                                window.location.reload();
-                            }
-                        });
-                }, 4000);
-            </script>
-        </div>
-        {% endif %}
-        {% else %}
-        <p>LinkedIn not connected.</p>
-        {% endif %}
-        {% endif %}
-
-        <hr>
-
-        <!-- ================= GITHUB ================= -->
-        <h2>GitHub</h2>
-
-        {% if github %}
-        <p>Username: {{ github.github_username }}</p>
-        <p>Followers: {{ github.followers }}</p>
-        <p>Following: {{ github.following }}</p>
-        <p>Account Age: {{ github.account_age_days }} days</p>
-
-        <h3>Developer Score</h3>
-        <ul>
-            <li>Consistency: {{ github.developer_score.consistency }}</li>
-            <li>Depth: {{ github.developer_score.depth }}</li>
-            <li>Impact: {{ github.developer_score.impact }}</li>
-            <li>Overall: {{ github.developer_score.overall }}</li>
-        </ul>
-        <h3>Projects</h3>
-
-        {% if github.repo_quality %}
-        <table border="1">
-            <tr>
-                <th>Project</th>
-                <th>Status</th>
-                <th>Stars</th>
-                <th>Forks</th>
-                <th>Last Activity (days)</th>
-                <th>Link</th>
-            </tr>
-
-            {% for repo in github.repo_quality %}
-            <tr>
-                <td>{{ repo.name }}</td>
-                <td>{{ repo.status }}</td>
-                <td>{{ repo.stars }}</td>
-                <td>{{ repo.forks }}</td>
-                <td>{{ repo.last_push_days_ago }}</td>
-                <td>
-                    <a href="{{ repo.repo_url }}" target="_blank">View</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p>No projects found.</p>
-        {% endif %}
-
-        <h3>Language Proficiency</h3>
-
-        {% if github.language_intelligence %}
-        <table border="1">
-            <tr>
-                <th>Language</th>
-                <th>Repos</th>
-                <th>Active Repos</th>
-                <th>Avg Active Days</th>
-                <th>Proficiency</th>
-                <th>Level</th>
-            </tr>
-            {% for lang, info in github.language_intelligence.items() %}
-            <tr>
-                <td>{{ lang }}</td>
-                <td>{{ info.repos }}</td>
-                <td>{{ info.active_repos }}</td>
-                <td>{{ info.avg_active_days }}</td>
-                <td>{{ info.proficiency }}</td>
-                <td>{{ info.level }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <p>No language data available.</p>
-        {% endif %}
-
-        <h3>Activity Summary</h3>
-        <ul>
-            <li>Total Repositories: {{ github.activity_summary.total_repos }}</li>
-            <li>Active Repositories: {{ github.activity_summary.active_repos }}</li>
-            <li>Dead Repositories: {{ github.activity_summary.dead_repos }}</li>
-            <li>Average Repo Lifespan (days): {{ github.activity_summary.avg_repo_lifespan_days }}</li>
-            <li>Last Activity (days ago): {{ github.activity_summary.last_activity_days_ago }}</li>
-        </ul>
-
-        {% else %}
-        {% if user.github_username %}
-        {% if user.github_sync_status == 'failed' %}
-        <div class="github-error" style="text-align: center; padding: 40px; color: #dc2626;">
-            <h3>GitHub Sync Failed</h3>
-            <p>We couldn't fetch data for <strong>{{ user.github_username }}</strong>.</p>
-            <p>Please check the username or try again later.</p>
-            <a href="{{ url_for('profile.complete_profile') }}" style="text-decoration: underline;">Edit Username</a>
-        </div>
-        {% else %}
-        <div class="github-loading" style="text-align: center; padding: 40px;">
-            <div class="loader-ring"></div>
-            <p>Fetching GitHub Data... This usually takes 10-20 seconds.</p>
-            <p style="font-size: 0.9em; color: #666;">We are analyzing your repositories to build your developer card.
-            </p>
-        </div>
-
-
-
-        <script>
-            // Check every 3 seconds if data has arrived or failed
-            setInterval(() => {
-                fetch(window.location.href)
-                    .then(res => res.text())
-                    .then(html => {
-                        // Reload if we see "GitHub Sync Failed" OR "Projects" (success)
-                        if (html.includes("GitHub Sync Failed") || !html.includes("Fetching GitHub Data")) {
-                            window.location.reload();
-                        }
-                    });
-            }, 3000);
-        </script>
-        {% endif %}
-        {% else %}
-        <p>GitHub not connected.</p>
-        {% endif %}
-        {% endif %}
-
-        <hr>
-
-        <!-- ================= COMPETITIVE PROGRAMMING ================= -->
-        <h2>Competitive Programming</h2>
-
-        <h3>LeetCode</h3>
-        {% if leetcode %}
-        <pre>{{ leetcode }}</pre>
-        {% else %}
-        <p>LeetCode not connected.</p>
-        {% endif %}
-
-        <h3>Codeforces</h3>
-        {% if codeforces %}
-        <pre>{{ codeforces }}</pre>
-        {% else %}
-        <p>Codeforces not connected.</p>
-        {% endif %}
-
-        <h3>CodeChef</h3>
-        {% if codechef %}
-        <pre>{{ codechef }}</pre>
-        {% else %}
-        <p>CodeChef not connected.</p>
-        {% endif %}
-
-        <h3>HackerRank</h3>
-        {% if hackerrank %}
-        <pre>{{ hackerrank }}</pre>
-        {% else %}
-        <p>HackerRank not connected.</p>
-        {% endif %}
-
-        <hr>
-
-        <a href="{{ url_for('auth.logout') }}">Logout</a>
-    </div> <!-- End content-wrapper -->
+    </div>
 
     <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+    <script>
+        // Simple logic to toggle the dropdown
+        const profileContainer = document.getElementById('navProfileContainer');
+        const dropdown = document.getElementById('profileDropdown');
+
+        if (profileContainer) {
+            profileContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('show');
+            });
+
+            document.addEventListener('click', () => {
+                if (dropdown.classList.contains('show')) {
+                    dropdown.classList.remove('show');
+                }
+            });
+        }
+    </script>
 </body>
 
 </html>

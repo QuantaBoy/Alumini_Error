@@ -42,15 +42,131 @@ def profile_page():
         .first()
     )
 
+    codechef_data = None
+    if user.codechef_username:
+        try:
+            from app.services.codechef_service import fetch_codechef_user
+            codechef_data = fetch_codechef_user(user.codechef_username)
+        except Exception as e:
+            print(f"Error fetching CodeChef data: {e}")
+
+    codeforces_data = None
+    if user.codeforces_username:
+        try:
+            from app.services.codeforces_service import fetch_codeforces_user
+            codeforces_data = fetch_codeforces_user(user.codeforces_username)
+        except Exception as e:
+            print(f"Error fetching CodeForces data: {e}")
+
+    leetcode_data = None
+    if user.leetcode_username:
+        try:
+            from app.services.leetcode_service import fetch_leetcode_user
+            leetcode_data = fetch_leetcode_user(user.leetcode_username)
+        except Exception as e:
+             print(f"Error fetching LeetCode data: {e}")
+
+    # --- POST ANALYTICS CALCULATION ---
+    post_analytics = {
+        "likes": 0,
+        "comments": 0,
+        "shares": 0,
+        "impressions": 0,
+        "reach": 0,
+        "engagement_rate": 0
+    }
+
+    if linkedin and linkedin.posts:
+        posts = linkedin.posts if isinstance(linkedin.posts, list) else []
+        for post in posts:
+            stats = post.get("stats", {})
+            post_analytics["likes"] += stats.get("like", 0)
+            post_analytics["comments"] += stats.get("comments", 0)
+            post_analytics["shares"] += stats.get("reposts", 0)
+        
+        # Estimate Impressions & Reach (as scraper doesn't get these private metrics)
+        interactions = post_analytics["likes"] + post_analytics["comments"] + post_analytics["shares"]
+        if interactions > 0:
+            post_analytics["impressions"] = interactions * 20 # Rough multiplier
+            post_analytics["reach"] = int(post_analytics["impressions"] * 0.65)
+            post_analytics["engagement_rate"] = round((interactions / post_analytics["impressions"]) * 100, 1)
+    # --- SKILLS / LANGUAGE ANALYSIS ---
+    skills_data = {}
+    if github and github.language_intelligence:
+        lang_stats = github.language_intelligence
+        
+        # 1. Calculate raw percentages based on Repo Count (or you could use 'stars' or 'active_days')
+        # Using repo count as proxy for familiarity
+        total_repos_count = sum(item.get("repos", 0) for item in lang_stats.values())
+        
+        raw_skills = {}
+        if total_repos_count > 0:
+            for lang, data in lang_stats.items():
+                # Filter out configuration/markup languages often considered "noise" if desired,
+                # but broadly relying on the "above average" rule requested by user.
+                repos_count = data.get("repos", 0)
+                percent = (repos_count / total_repos_count) * 100
+                raw_skills[lang] = percent
+
+        # 2. Calculate Average Percentage
+        if raw_skills:
+            avg_percent = sum(raw_skills.values()) / len(raw_skills)
+            
+            # 3. Filter: Only keep skills > Average
+            # We also ensure we keep at least the top 1 if everything is flat, though average check handles most.
+            filtered_skills = {k: v for k, v in raw_skills.items() if v >= avg_percent}
+            
+            # If strictly filtering removes too much (e.g. all equal), revert to all or top 5
+            if not filtered_skills:
+                filtered_skills = dict(sorted(raw_skills.items(), key=lambda x: x[1], reverse=True)[:5])
+            
+            # 4. Sort Descending
+            skills_data = dict(sorted(filtered_skills.items(), key=lambda item: item[1], reverse=True))
+            
+            # Round for display
+            skills_data = {k: round(v, 1) for k, v in skills_data.items()}
+
+    # --- SKILLS CHART PRE-CALCULATION ---
+    skills_gradient = "conic-gradient(#e0e0e0 0deg 360deg)" # Default gray
+    skills_legend = []
+    
+    if skills_data:
+        colors = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#f44336']
+        gradient_parts = []
+        current_deg = 0
+        
+        for i, (lang, percent) in enumerate(skills_data.items()):
+            color = colors[i % len(colors)]
+            start_deg = current_deg
+            end_deg = current_deg + (percent * 3.6)
+            
+            # CSS Conic Gradient Syntax: color start_deg end_deg
+            gradient_parts.append(f"{color} {start_deg}deg {end_deg}deg")
+            
+            skills_legend.append({
+                "lang": lang,
+                "percent": percent,
+                "color": color
+            })
+            
+            current_deg = end_deg
+            
+        if gradient_parts:
+            skills_gradient = f"conic-gradient({', '.join(gradient_parts)})"
+
     response = make_response(render_template(
         "profile.html",
         user=user,
         github=github,
         linkedin=linkedin,
-        leetcode=None,
-        codeforces=None,
-        codechef=None,
-        hackerrank=None
+        leetcode=leetcode_data,
+        codeforces=codeforces_data,
+        codechef=codechef_data,
+        hackerrank=None,
+        analytics=post_analytics,
+        skills_data=skills_data,
+        skills_gradient=skills_gradient,
+        skills_legend=skills_legend
     ))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
@@ -66,8 +182,9 @@ def profile_page():
 def complete_profile():
     user = current_user
 
-    if user.profile_completed:
-        return redirect(url_for("home.home"))
+    # Allow users to edit their profile even if completed
+    # if user.profile_completed:
+    #     return redirect(url_for("home.home"))
 
     if request.method == "POST":
         github_username = request.form.get("github_username", "").strip()
@@ -85,6 +202,7 @@ def complete_profile():
         user.github_username = github_username or None
         user.linkedin_url = request.form.get("linkedin_url")
         user.codeforces_username = request.form.get("codeforces_username")
+        user.leetcode_username = request.form.get("leetcode_username")
         user.codechef_username = request.form.get("codechef_username")
         user.hackerrank_username = request.form.get("hackerrank_username")
         user.portfolio_url = request.form.get("portfolio_url")

@@ -148,8 +148,8 @@ class LinkedInProScraper:
         options.add_argument("--disable-gpu")
         options.add_argument("--start-maximized")
         # HEADLESS MODE (Invisible) - Commented out for visual verification
-        # options.add_argument("--headless=new") 
-        # options.add_argument("--window-size=1920,1080")
+        options.add_argument("--headless=new") 
+        options.add_argument("--window-size=1920,1080")
 
         if use_proxy and proxy_string:
             print(f"Configuring Proxy: {proxy_string}")
