@@ -609,7 +609,14 @@ class LinkedInProScraper:
     # Main Orchestrator
     # --------------------------------------------------------------------------
 
-    def scrape_full_profile(self, url: str) -> Profile:
+    def scrape_full_profile(self, url_or_username: str) -> Profile:
+        # construct full URL if just a username is provided
+        if not url_or_username.startswith("http"):
+             # assuming it's a username
+             url = f"https://www.linkedin.com/in/{url_or_username.strip('/')}/"
+        else:
+             url = url_or_username
+
         if "linkedin.com" not in self.driver.current_url:
              self.login_and_save_cookies()
         
@@ -660,13 +667,14 @@ class LinkedInProScraper:
 
 def main():
     # --------------------------------------------------------------------------
-    # LIST OF TARGET USERS
+    # MANUAL TESTING
     # --------------------------------------------------------------------------
-    target_urls = [
-         "https://www.linkedin.com/in/satyanadella",
-         # Add more URLs here, e.g.:
-         # "https://www.linkedin.com/in/sundarpichai",
-    ]
+    target_input = input("Enter LinkedIn URL or Username to scrape (comma separated): ")
+    if not target_input.strip():
+        print("No input provided. Exiting.")
+        return
+
+    target_urls = [t.strip() for t in target_input.split(",") if t.strip()]
     
     print(f"Queue: {len(target_urls)} profiles to scrape.")
     
