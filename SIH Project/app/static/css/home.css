@@ -269,7 +269,8 @@ body {
 
 /* Spacing for AI Tools - VERTICAL (Sidebar) */
 .navbar.scrolled .menu-separator {
-  margin-top: 40px;
+  margin-top: auto;
+  /* push icons below this to the bottom of the pill */
   position: relative;
 }
 

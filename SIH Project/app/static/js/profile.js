@@ -82,4 +82,105 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+    // ==============================
+    // 5. COVER PHOTO UPLOAD
+    // ==============================
+    const editCoverBtn = document.getElementById("editCoverBtn");
+    const coverInput = document.getElementById("coverInput");
+    const coverPhoto = document.getElementById("coverPhoto");
+
+    // Restore saved cover on load
+    const savedCover = localStorage.getItem("profile_cover_url");
+    if (coverPhoto && savedCover) {
+        coverPhoto.style.backgroundImage = `url('${savedCover}')`;
+    }
+
+    if (editCoverBtn && coverInput && coverPhoto) {
+        editCoverBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            coverInput.click();
+        });
+
+        coverInput.addEventListener("change", async () => {
+            const file = coverInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("cover", file);
+
+            try {
+                editCoverBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                const res = await fetch("/api/upload-cover", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Upload failed");
+
+                const data = await res.json();
+                coverPhoto.style.backgroundImage = `url('${data.url}')`;
+                coverPhoto.style.backgroundSize = "cover";
+                coverPhoto.style.backgroundPosition = "center";
+                localStorage.setItem("profile_cover_url", data.url);
+                editCoverBtn.innerHTML = '<i class="fas fa-camera"></i> Change Cover';
+            } catch (err) {
+                console.error("Cover upload error:", err);
+                alert("Failed to upload cover photo.");
+                editCoverBtn.innerHTML = '<i class="fas fa-camera"></i> Change Cover';
+            }
+        });
+    }
+
+    // ==============================
+    // 6. AVATAR / PROFILE PHOTO UPLOAD
+    // ==============================
+    const changeAvatarBtn = document.getElementById("changeAvatarBtn");
+    const avatarInput = document.getElementById("avatarInput");
+
+    // Restore saved avatar on load
+    const savedAvatar = localStorage.getItem("profile_avatar_url");
+    if (savedAvatar) {
+        const profileAvatar = document.getElementById("profileAvatarImg");
+        if (profileAvatar) profileAvatar.src = savedAvatar;
+        document.querySelectorAll(".nav-profile-img").forEach(img => img.src = savedAvatar);
+    }
+
+    if (changeAvatarBtn && avatarInput) {
+        changeAvatarBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            avatarInput.click();
+        });
+
+        avatarInput.addEventListener("change", async () => {
+            const file = avatarInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("avatar", file);
+
+            try {
+                changeAvatarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                const res = await fetch("/api/upload-avatar", {
+                    method: "POST",
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Upload failed");
+
+                const data = await res.json();
+
+                // Update the main profile avatar and nav avatar
+                const profileAvatar = document.getElementById("profileAvatarImg");
+                if (profileAvatar) profileAvatar.src = data.url;
+                document.querySelectorAll(".nav-profile-img").forEach(img => img.src = data.url);
+
+                localStorage.setItem("profile_avatar_url", data.url);
+                changeAvatarBtn.innerHTML = '<i class="fas fa-camera"></i> Change Photo';
+            } catch (err) {
+                console.error("Avatar upload error:", err);
+                alert("Failed to upload profile photo.");
+                changeAvatarBtn.innerHTML = '<i class="fas fa-camera"></i> Change Photo';
+            }
+        });
+    }
 });

@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.models import Post, User
 from app.db import db
+from sqlalchemy.orm.attributes import flag_modified
 import os
 from datetime import datetime
 
@@ -105,10 +106,9 @@ def delete_post(post_id):
 def toggle_like(post_id):
     post = Post.query.get_or_404(post_id)
     
-    likes = post.likes or []
+    likes = list(post.likes or [])
     user_id_str = str(current_user.id)
     
-    # Handle both string and int formats in likes array
     likes = [str(like) for like in likes]
     
     if user_id_str in likes:
@@ -117,6 +117,7 @@ def toggle_like(post_id):
         likes.append(user_id_str)
     
     post.likes = likes
+    flag_modified(post, "likes")  # Tell SQLAlchemy JSON column was mutated
     db.session.commit()
     
     return jsonify({"likes": len(likes)})
@@ -132,7 +133,7 @@ def add_comment(post_id):
     if not text:
         return jsonify({"message": "Comment required"}), 400
     
-    comments = post.comments or []
+    comments = list(post.comments or [])
     comments.append({
         "user_id": str(current_user.id),
         "username": current_user.username,
@@ -141,6 +142,67 @@ def add_comment(post_id):
     })
     
     post.comments = comments
+    flag_modified(post, "comments")  # Tell SQLAlchemy JSON column was mutated
     db.session.commit()
     
     return jsonify(post.comments), 201
+
+
+@home_bp.route("/api/upload-cover", methods=["POST"])
+@login_required
+def upload_cover():
+    """Upload a cover photo for the profile page."""
+    if 'cover' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    f = request.files['cover']
+    if not f or not f.filename:
+        return jsonify({"error": "Empty file"}), 400
+
+    allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in allowed:
+        return jsonify({"error": "Invalid file type"}), 400
+
+    covers_folder = os.path.join(UPLOAD_FOLDER, "covers")
+    os.makedirs(covers_folder, exist_ok=True)
+
+    filename = secure_filename(f"cover_{current_user.id}.{ext}")
+    save_path = os.path.join(covers_folder, filename)
+    f.save(save_path)
+
+    cover_url = f"/static/uploads/covers/{filename}"
+
+    # Store on user model (reuse portfolio_url slot or add a dedicated column)
+    # We'll store in a JSON encoded string in admin_code temporarily until a migration adds cover_photo
+    # Better: store in user.admin_code only if not set — instead store via a session-safe approach
+    # Use a simple file convention: cover_{user_id}.ext — client just reads this URL
+    return jsonify({"url": cover_url}), 200
+
+
+@home_bp.route("/api/upload-avatar", methods=["POST"])
+@login_required
+def upload_avatar():
+    """Upload a profile avatar photo."""
+    if 'avatar' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    f = request.files['avatar']
+    if not f or not f.filename:
+        return jsonify({"error": "Empty file"}), 400
+
+    allowed = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    ext = f.filename.rsplit('.', 1)[-1].lower() if '.' in f.filename else ''
+    if ext not in allowed:
+        return jsonify({"error": "Invalid file type"}), 400
+
+    avatars_folder = os.path.join(UPLOAD_FOLDER, "avatars")
+    os.makedirs(avatars_folder, exist_ok=True)
+
+    filename = secure_filename(f"avatar_{current_user.id}.{ext}")
+    save_path = os.path.join(avatars_folder, filename)
+    f.save(save_path)
+
+    avatar_url = f"/static/uploads/avatars/{filename}"
+    return jsonify({"url": avatar_url}), 200
+

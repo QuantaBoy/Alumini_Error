@@ -1,3 +1,10 @@
+/* Universal reset (match home.css) */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Global Styles */
 body {
   background-color: #f0f2f5;
@@ -5,6 +12,21 @@ body {
   color: #1a1a1a;
   padding-top: 80px;
   /* Space for fixed navbar */
+}
+
+/* When navbar collapses to left sidebar, shift profile content right
+   (mirrors the body.nav-scrolled rule in home.css) */
+body.nav-scrolled .profile-container {
+  margin-left: 100px;
+  width: calc(100% - 100px);
+  transition: margin-left 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* Smooth transition back when navbar returns to top */
+.profile-container {
+  transition: margin-left 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+    width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* Navbar adjustments (keep existing navbar styles or ensure compatibility) */
@@ -29,14 +51,203 @@ body {
   gap: 25px;
 }
 
-@media (max-width: 1024px) {
+/* ─── RESPONSIVE BREAKPOINTS ─────────────────────────────────────── */
+
+/* ── 1. Narrow desktop (≤ 1280px): shrink sidebar ── */
+@media (max-width: 1280px) {
   .profile-content-grid {
+    grid-template-columns: 1fr 300px;
+    gap: 18px;
+  }
+}
+
+/* ── 2. Tablet landscape (≤ 1024px): stack sidebar below main ── */
+@media (max-width: 1024px) {
+  body.nav-scrolled .profile-container {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .profile-content-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* Show sidebar below main content instead of hiding it */
+  .right-sidebar {
+    display: block;
+    position: static;
+    /* Un-sticky on tablet */
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .profile-container {
+    padding: 0 16px 30px;
+  }
+
+  .activity-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* ── 3. Tablet portrait / large mobile (≤ 768px) ── */
+@media (max-width: 768px) {
+  body {
+    padding-top: 70px;
+  }
+
+  .profile-container {
+    padding: 0 12px 24px;
+    gap: 14px;
+  }
+
+  /* Header: stack avatar + info vertically */
+  .cover-photo {
+    height: 130px;
+  }
+
+  .profile-avatar-container {
+    width: 110px;
+    height: 110px;
+    top: 75px;
+    left: 16px;
+  }
+
+  .header-info {
+    margin-top: 65px;
+    padding: 0 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info-left {
+    max-width: 100%;
+  }
+
+  .full-name {
+    font-size: 1.4rem;
+  }
+
+  .info-right {
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
+
+  /* Activity grid: 1 column on mobile */
+  .activity-grid {
     grid-template-columns: 1fr;
   }
 
-  .right-sidebar {
-    display: none;
-    /* Hide sidebar on smaller screens or move below? */
+  /* Cards: less padding */
+  .card-padding {
+    padding: 14px 16px;
+  }
+
+  .section-title {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+  }
+
+  /* Experience / Education list items */
+  .list-item {
+    gap: 10px;
+  }
+
+  .item-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Post cards */
+  .post-card {
+    padding: 12px;
+  }
+
+  /* Donut chart: smaller */
+  .donut-chart {
+    width: 140px;
+    height: 140px;
+  }
+
+  .donut-inner {
+    width: 95px;
+    height: 95px;
+  }
+
+  .donut-percent {
+    font-size: 1.4rem;
+  }
+}
+
+/* ── 4. Small mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .profile-container {
+    padding: 0 8px 20px;
+    gap: 10px;
+  }
+
+  .cover-photo {
+    height: 100px;
+  }
+
+  .profile-avatar-container {
+    width: 85px;
+    height: 85px;
+    top: 60px;
+    left: 12px;
+  }
+
+  .header-info {
+    margin-top: 48px;
+    padding: 0 12px;
+  }
+
+  .full-name {
+    font-size: 1.15rem;
+  }
+
+  .headline {
+    font-size: 0.85rem;
+  }
+
+  .btn-primary-custom {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .card-padding {
+    padding: 12px 14px;
+  }
+
+  .section-title {
+    font-size: 0.95rem;
+  }
+
+  /* Graph bars: shorter */
+  .graph-value {
+    font-size: 1.5rem;
+  }
+
+  /* Capability snapshot items: tighter */
+  .capability-item {
+    gap: 8px;
+  }
+
+  .cap-text h4 {
+    font-size: 0.85rem;
+  }
+
+  .cap-text p {
+    font-size: 0.72rem;
   }
 }
 
@@ -52,14 +263,29 @@ body {
 }
 
 .card-padding {
-  padding: 20px 25px;
+  padding: 15px 20px;
 }
 
 .section-title {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #000;
-  margin-bottom: 20px;
+  margin-top: 0;
+  margin-bottom: 15px;
+  letter-spacing: -0.01em;
+}
+
+/* ================= ABOUT SECTION ================= */
+.about-text {
+  font-size: 0.95rem;
+  color: #333;
+  line-height: 1.75;
+}
+
+.about-empty {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
 }
 
 /* ================= HEADER SECTION ================= */
@@ -90,14 +316,28 @@ body {
 
 .edit-cover-btn {
   position: absolute;
-  top: 15px;
-  right: 15px;
-  background: #fff;
-  border-radius: 50%;
-  padding: 8px;
+  bottom: 14px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  padding: 7px 14px;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 20;
+  /* above the ::after overlay */
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #222;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s, box-shadow 0.2s;
+  user-select: none;
+}
+
+.edit-cover-btn:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .profile-avatar-container {
@@ -108,15 +348,44 @@ body {
   border-radius: 50%;
   width: 160px;
   height: 160px;
-  overflow: hidden;
+  overflow: visible;
+  /* allow camera badge to sit outside the circle edge */
   background: #fff;
   z-index: 10;
+}
+
+/* The circular camera badge perfectly overlaid on the avatar */
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #222;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: background 0.2s, transform 0.2s;
+  z-index: 20;
+}
+
+.avatar-edit-badge:hover {
+  background: #444;
+  transform: scale(1.12);
 }
 
 .profile-avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
+  /* keep the image circular even without overflow:hidden on parent */
 }
 
 .header-info {
@@ -233,46 +502,53 @@ body {
 .stat-card {
   background: #fff;
   border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 15px;
+  border-radius: 12px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .stat-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .stat-header i {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
 }
 
 .stat-title {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .stat-metrics {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   margin-bottom: 15px;
 }
 
 .metric-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.9rem;
-  color: #555;
+  font-size: 0.95rem;
+  color: #444;
 }
 
 .metric-val {
   font-weight: 700;
-  color: #000;
+  color: #111;
 }
 
 .stat-footer {
@@ -476,6 +752,15 @@ body {
   border: 1px solid #e0e0e0;
 }
 
+/* When graph lives inside a unified profile-card — no double-border */
+.profile-card .analytics-graph {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 16px;
+}
+
 .graph-title {
   font-size: 0.9rem;
   color: #666;
@@ -518,6 +803,21 @@ body {
   margin-bottom: 10px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   border: 1px solid #f0f0f0;
+}
+
+/* Inside a unified card — flat rows with dividers, no individual boxes */
+.profile-card .analytics-stat-row {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 10px 0;
+  margin-bottom: 0;
+}
+
+.profile-card .analytics-stat-row:last-of-type {
+  border-bottom: none;
 }
 
 .stat-icon-circle {
@@ -1505,3 +1805,6 @@ body.nav-scrolled .profile-container {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ─── RESPONSIVE: profile-content-grid align-items start already set above ─── */
+/* (All breakpoints are declared at the top of this file in the RESPONSIVE BREAKPOINTS block) */

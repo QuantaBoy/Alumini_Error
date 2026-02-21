@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from bs4 import BeautifulSoup
 import os
 import pickle
+import re
 
 # Ensure undetected_chromedriver is installed
 try:
@@ -280,36 +281,131 @@ class LinkedInProScraper:
     def get_profile_main(self, url: str) -> Profile:
         print(f"Navigating to Profile: {url}")
         self.driver.get(url)
-        self._human_delay(3, 5)
-        self._simulate_human_scroll() # Read the whole page to trigger lazy loading
+        self._human_delay(5, 8) # Longer wait for initial load
+        
+        # Check for Common Roadblocks
+        current_url = self.driver.current_url.lower()
+        if "login" in current_url or "checkpoint" in current_url or "security" in current_url:
+            print(f"CRITICAL: Scraper blocked by LinkedIn security/login wall. Current URL: {self.driver.current_url}")
+            # If we have a login wall, we can't scrape main info accurately
+            # But let's try to proceed in case it's just a soft wall
+        
+        self._simulate_human_scroll() # Trigger lazy loading
+        
+        # Wait for name tag to ensure page is settled
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "h1"))
+            )
+        except:
+            print("Timed out waiting for H1 name tag. Proceeding anyway...")
         
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         profile = Profile(linkedinUrl=url)
 
+        # DEBUG: Save a snippet of the page source if things look empty
+        if not soup.find("h1"):
+            print("WARNING: Name tag (H1) not found. Page might not have rendered or is a restricted view.")
+        
         # Basic Info
         try:
-            name_tag = soup.find("h1", class_="text-heading-xlarge")
+            # 1. Full Name - Multiple common selectors
+            name_tag = (
+                soup.find("h1", class_="text-heading-xlarge") or
+                soup.find("h1", class_="top-card-layout__title") or
+                soup.select_one(".pv-top-card-layout__title") or
+                soup.find("h1")
+            )
             profile.fullName = self._clean_text(name_tag.text) if name_tag else ""
+            print(f"Extracted Name: {profile.fullName}")
 
-            headline_tag = soup.find("div", class_="text-body-medium")
+            # 2. Headline
+            headline_tag = (
+                soup.find("div", class_="text-body-medium") or
+                soup.find("p", class_="top-card-layout__headline") or
+                soup.find("div", class_="text-body-medium break-words")
+            )
             profile.headline = self._clean_text(headline_tag.text) if headline_tag else ""
 
-            loc_tag = soup.find("span", class_="text-body-small inline t-black--light break-words")
+            # 3. Location
+            loc_tag = (
+                soup.find("span", class_="text-body-small inline t-black--light break-words") or
+                soup.find("span", class_="top-card-layout__first-subline") or
+                soup.find("div", class_="pb2 pv-text-details__left-panel")
+            )
             profile.location = self._clean_text(loc_tag.text) if loc_tag else ""
             
-            about_section = soup.find("section", {"id": "about"})
-            if about_section:
-                 # Often inside a hidden span if expanded, or just span
-                 about_div = about_section.find_next("div", class_="display-flex ph5 pv3")
-                 if about_div:
-                     about_text = about_div.find("span", class_="visually-hidden") or about_div.find("span")
-                     profile.about = self._clean_text(about_text.text) if about_text else ""
+            # 4. About - Robust Extraction
+            about_section = soup.find("section", {"id": "about"}) or soup.select_one("section.about-section")
             
-            # Profile Pic (High Quality from img tag)
-            img_tag = soup.find("img", class_="pv-top-card-profile-picture__image")
-            if img_tag and img_tag.has_attr("src"):
-                profile.profilePic = img_tag["src"]
+            if not about_section:
+                for h in soup.find_all(['h2', 'h3', 'h4', 'h5']):
+                    if h.get_text().lower().strip() == "about":
+                        parent = h.find_parent("section") or h.find_parent("div", class_="pv-profile-card")
+                        if parent:
+                            about_section = parent
+                            break
 
+            if about_section:
+                 print("Found About section, extracting text...")
+                 
+                 # 1. Look for specialized containers first
+                 containers = [
+                     about_section.find("div", class_="pv-shared-text-with-see-more"),
+                     about_section.find("div", class_="inline-show-more-text"),
+                     about_section.find("div", class_="display-flex ph5 pv3"),
+                     about_section.select_one(".pv-profile-card__about-contents")
+                 ]
+                 
+                 bio_text = ""
+                 for c in containers:
+                     if not c: continue
+                     
+                     # Look for hidden full text span inside container
+                     hidden = c.find("span", class_="visually-hidden")
+                     txt = self._clean_text(hidden.get_text() if hidden else c.get_text())
+                     
+                     # Check if this text is actually a bio
+                     if txt and txt.lower() != "about" and len(txt) > 10:
+                        bio_text = txt
+                        break
+
+                 # 2. General span search within section if still empty
+                 if not bio_text:
+                     spans = about_section.find_all("span")
+                     for s in spans:
+                         txt = self._clean_text(s.get_text())
+                         if len(txt) > 20 and txt.lower() != "about" and "see more" not in txt.lower():
+                             bio_text = txt
+                             break
+
+                 # 3. Final cleaning
+                 if bio_text:
+                     # Remove "About" prefix or "see more"
+                     bio_text = re.sub(r'^about\s+', '', bio_text, flags=re.IGNORECASE).strip()
+                     bio_text = bio_text.replace("...see more", "").replace("see more", "").strip()
+                     
+                     # Double check it isn't just "About" now
+                     if bio_text.lower() == "about":
+                         bio_text = ""
+                 
+                 profile.about = bio_text
+                 print(f"Extracted About (len): {len(profile.about)}")
+            else:
+                print("ABORT: About section element not found in soup.")
+            
+            # 5. Profile Pic (High Quality from img tag)
+            img_tag = (
+                soup.find("img", class_="pv-top-card-profile-picture__image") or
+                soup.find("img", class_="top-card-layout__entity-image") or
+                soup.select_one("img.pv-top-card-profile-picture__image") or
+                soup.select_one(".pv-top-card-profile-picture__image img")
+            )
+            if img_tag:
+                profile.profilePic = img_tag.get("src") or img_tag.get("data-delayed-url") or ""
+                print(f"Found Profile Pic URL: {profile.profilePic[:50]}...")
+            else:
+                print("ABORT: Profile picture image tag not found.")
         except Exception as e:
             print(f"Error extracting main info: {e}")
         
@@ -447,11 +543,11 @@ class LinkedInProScraper:
         self._simulate_human_scroll()
 
         # Deep Scroll Loop to load more content
-        # Increased limit for deeper history
-        max_attempts = 25 
-        min_posts_desired = 30
+        # Reduced limit for faster scraping
+        max_attempts = 2 
+        min_posts_desired = 10
         
-        print(" scrolling to load more posts...")
+        print(f" scrolling {max_attempts} times to load posts...")
         for i in range(max_attempts):
             # Scroll down
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -610,15 +706,21 @@ class LinkedInProScraper:
     # --------------------------------------------------------------------------
 
     def scrape_full_profile(self, url_or_username: str) -> Profile:
-        # construct full URL if just a username is provided
-        if not url_or_username.startswith("http"):
-             # assuming it's a username
-             url = f"https://www.linkedin.com/in/{url_or_username.strip('/')}/"
-        else:
-             url = url_or_username
+        # Construct full URL if just a username or partial URL is provided
+        url = url_or_username.strip().strip('/')
+        
+        if not url.startswith("http"):
+            if "linkedin.com/in/" in url:
+                # Handle cases like "www.linkedin.com/in/name" or "linkedin.com/in/name"
+                url = f"https://{url}"
+            else:
+                # Assuming it's just a username
+                url = f"https://www.linkedin.com/in/{url}/"
+        
+        print(f"Final Scrape URL: {url}")
 
-        if "linkedin.com" not in self.driver.current_url:
-             self.login_and_save_cookies()
+        # Always attempt login (uses saved cookies, skips manual flow if already logged in)
+        self.login_and_save_cookies()
         
         # 1. Main Info + Contact Modal
         profile = self.get_profile_main(url)

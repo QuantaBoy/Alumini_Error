@@ -3,9 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ user.username }} | Profile</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}?v=6" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}?v=8" />
+    <!-- Chart.js for live canvas charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -63,12 +66,22 @@
     <div class="profile-container">
         <!-- 1. HEADER CARD -->
         <div class="profile-card profile-header-card">
-            <div class="cover-photo">
-                <div class="edit-cover-btn"><i class="fas fa-camera"></i></div>
+            <div class="cover-photo" id="coverPhoto">
+                <!-- Hidden file input for cover upload -->
+                <input type="file" id="coverInput" accept="image/*" style="display:none;" />
+                <div class="edit-cover-btn" id="editCoverBtn" title="Change Cover Photo">
+                    <i class="fas fa-camera"></i> Change Cover
+                </div>
             </div>
             <div class="profile-avatar-container">
                 <img src="{{ url_for('static', filename='images/avatar_3d.png') }}" class="profile-avatar"
-                    alt="Avatar" />
+                    id="profileAvatarImg" alt="Avatar" />
+                <!-- Hidden file input -->
+                <input type="file" id="avatarInput" accept="image/*" style="display:none;" />
+                <!-- Camera badge overlay -->
+                <div class="avatar-edit-badge" id="changeAvatarBtn" title="Change Profile Photo">
+                    <i class="fas fa-camera"></i>
+                </div>
             </div>
 
             <div class="header-info">
@@ -110,14 +123,17 @@
         </div>
 
         <!-- 2. ABOUT -->
-        {% if linkedin and linkedin.about %}
         <div class="profile-card card-padding">
             <h3 class="section-title">About</h3>
-            <div class="about-text">
-                {{ linkedin.about }}
+            {% if linkedin and linkedin.about %}
+            <div class="about-text">{{ linkedin.about }}</div>
+            {% else %}
+            <div class="about-text about-empty">
+                <i class="fab fa-linkedin" style="color:#0a66c2; margin-right:8px;"></i>
+                No about information yet. Sync your LinkedIn profile to display your bio here.
             </div>
+            {% endif %}
         </div>
-        {% endif %}
 
         <div class="profile-content-grid">
             <!-- ================= LEFT / MAIN COLUMN ================= -->
@@ -232,6 +248,47 @@
                                 {% endif %}
                             </div>
                             <div class="stat-footer">View Contest Performance ></div>
+                        </div>
+
+                        <!-- HackerRank Card -->
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <i class="fab fa-hackerrank" style="color: #2ec866;"></i>
+                                <span class="stat-title">HackerRank</span>
+                            </div>
+                            <div class="stat-metrics">
+                                {% if hackerrank and "error" not in hackerrank %}
+                                <div class="metric-row">
+                                    <span>Solved</span>
+                                    <span class="metric-val">{{ hackerrank.total_solved }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Global Rank</span>
+                                    <span class="metric-val">{{ hackerrank.rank }}</span>
+                                </div>
+                                <div class="metric-row">
+                                    <span>Badges</span>
+                                    <span class="metric-val">{{ hackerrank.badges | length }}</span>
+                                </div>
+                                {% if hackerrank.badges %}
+                                <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
+                                    {% for b in hackerrank.badges[:4] %}
+                                    <span title="{{ b.badge_name }} — Solved: {{ b.solved }}" style="background:#e8f5e9; color:#2e7d32; font-size:0.72rem;
+                                                 border-radius:10px; padding:2px 7px; white-space:nowrap;">
+                                        {{ b.badge_name | truncate(14, True, '…') }}
+                                        {% for _ in range(b.stars) %}⭐{% endfor %}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="metric-row"><span class="metric-val">Not Connected</span></div>
+                                {% endif %}
+                            </div>
+                            <a href="{{ hackerrank.profile_url if hackerrank and 'error' not in hackerrank else '#' }}"
+                                target="_blank" class="stat-footer" style="text-decoration:none;">
+                                View HackerRank Profile >
+                            </a>
                         </div>
 
                     </div>
@@ -390,165 +447,159 @@
                 <!-- 1. Skills / Capability (MOVED TO TOP) -->
                 <div class="profile-card card-padding">
                     <h3 class="section-title" style="font-size: 1rem;">Skills Analysis</h3>
-                    <!-- Donut Chart Container -->
-                    <div class="donut-chart-container">
-                        <!-- 
-                       We will use a conic-gradient for the chart.
-                    -->
-                        {% if skills_data %}
-                        <div class="donut-chart" style="--chart-bg: {{ skills_gradient }};">
-                            <div class="donut-inner">
-                                <span class="donut-percent">{{ skills_data.values()|first | round | int }}%</span>
-                                <span class="donut-label">{{ skills_data.keys()|first }}</span>
-                            </div>
-                        </div>
 
-                        <div class="chart-legend">
-                            {% for item in skills_legend %}
-                            <div class="legend-item">
-                                <span class="legend-dot" style="--item-color: {{ item.color }};"></span>
-                                <span class="legend-text">{{ item.lang }} ({{ item.percent }}%)</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <!-- Fallback / Empty State -->
-                        <div class="donut-chart" style="background: conic-gradient(#e0e0e0 0deg 360deg);">
-                            <div class="donut-inner">
-                                <span class="donut-percent">0%</span>
-                                <span class="donut-label">N/A</span>
-                            </div>
-                        </div>
-                        <p style="text-align: center; color: #666; font-size: 0.85rem; margin-top: 10px;">
-                            Sync GitHub to see skills.
-                        </p>
-                        {% endif %}
+                    {% if skills_data %}
+                    <!-- Inject data as JSON for Chart.js -->
+                    <script id="skillsDataJSON" type="application/json">
+                        {
+                            "labels": {{ skills_data.keys() | list | tojson }},
+                            "values": {{ skills_data.values() | list | tojson }},
+                            "colors": ["#4f46e5","#06b6d4","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec4899","#14b8a6"]
+                        }
+                    </script>
+
+                    <div style="position:relative; width:100%; max-width:150px; margin:0 auto 14px;">
+                        <canvas id="skillsDonutChart" height="150"></canvas>
                     </div>
 
-                    <div class="capability-list">
-                        <h3 class="section-title" style="font-size: 1rem; margin-bottom: 5px;">Capability Snapshot</h3>
+                    <!-- Custom legend rendered by JS -->
+                    <div id="skillsLegend"
+                        style="display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-top:4px;"></div>
 
-                        {% if github and github.developer_score %}
-                        {% set score = github.developer_score %}
-
-                        <!-- 1. CONSISTENCY METRIC -->
-                        <div class="capability-item">
-                            <div class="cap-icon" style="color: #4CAF50;">
-                                {% if score.consistency >= 0.7 %}
-                                <i class="fas fa-fire-alt"></i>
-                                {% elif score.consistency >= 0.4 %}
-                                <i class="fas fa-check-circle"></i>
-                                {% else %}
-                                <i class="fas fa-clock"></i>
-                                {% endif %}
-                            </div>
-                            <div class="cap-text">
-                                <h4>
-                                    {% if score.consistency >= 0.7 %}
-                                    Highly Consistent
-                                    {% elif score.consistency >= 0.4 %}
-                                    Active Developer
-                                    {% else %}
-                                    Occasional Coder
-                                    {% endif %}
-                                </h4>
-                                <p>
-                                    {% if score.consistency >= 0.7 %}
-                                    Daily Contributions
-                                    {% elif score.consistency >= 0.4 %}
-                                    Regular Commits
-                                    {% else %}
-                                    Sporadic Activity
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 2. IMPACT / ENGAGEMENT METRIC -->
-                        <div class="capability-item">
-                            <div class="cap-icon" style="color: #000;">
-                                {% if score.impact >= 0.6 %}
-                                <i class="fas fa-star"></i>
-                                {% elif score.impact >= 0.3 %}
-                                <i class="fas fa-users"></i>
-                                {% else %}
-                                <i class="fas fa-seedling"></i>
-                                {% endif %}
-                            </div>
-                            <div class="cap-text">
-                                <h4>
-                                    {% if score.impact >= 0.6 %}
-                                    High Impact
-                                    {% elif score.impact >= 0.3 %}
-                                    Engaged Contributor
-                                    {% else %}
-                                    Growing Portfolio
-                                    {% endif %}
-                                </h4>
-                                <p>
-                                    {% if score.impact >= 0.6 %}
-                                    Open Source Leader
-                                    {% elif score.impact >= 0.3 %}
-                                    Community Participant
-                                    {% else %}
-                                    Personal Projects
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- 3. DEPTH / LEARNING METRIC -->
-                        <div class="capability-item">
-                            <div class="cap-icon" style="color: #FF9800;">
-                                {% if score.depth >= 0.7 %}
-                                <i class="fas fa-brain"></i>
-                                {% elif score.depth >= 0.4 %}
-                                <i class="fas fa-layer-group"></i>
-                                {% else %}
-                                <i class="fas fa-rocket"></i>
-                                {% endif %}
-                            </div>
-                            <div class="cap-text">
-                                <h4>
-                                    {% if score.depth >= 0.7 %}
-                                    Subject Matter Expert
-                                    {% elif skills_data|length > 4 %}
-                                    Polyglot Developer
-                                    {% else %}
-                                    Focused Learner
-                                    {% endif %}
-                                </h4>
-                                <p>
-                                    {% if score.depth >= 0.7 %}
-                                    Deep Technical Knowledge
-                                    {% elif skills_data|length > 4 %}
-                                    Broad Tech Stack
-                                    {% else %}
-                                    Specializing Skills
-                                    {% endif %}
-                                </p>
-                            </div>
-                        </div>
-
-                        {% else %}
-                        <!-- Fallback / Empty State -->
-                        <div style="text-align:center; padding: 20px; color:#999; font-size: 0.9rem;">
-                            <i class="fab fa-github" style="font-size: 24px; margin-bottom: 8px;"></i>
-                            <p>Sync GitHub to generate snapshot.</p>
-                        </div>
-                        {% endif %}
+                    {% else %}
+                    <!-- Empty state -->
+                    <div style="text-align:center; padding:30px 0; color:#aaa;">
+                        <i class="fab fa-github" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
+                        <span style="font-size:0.85rem;">Sync GitHub to see language skills.</span>
                     </div>
+                    {% endif %}
                 </div>
 
-                <!-- 2. Post Analytics (MOVED BELOW SKILLS) -->
-                <div class="sidebar-section">
+                <!-- 2. CAPABILITY SNAPSHOT (separate card) -->
+                <div class="profile-card card-padding">
+                    <h3 class="section-title" style="font-size: 1rem; margin-bottom: 5px;">Capability Snapshot</h3>
+
+                    {% if github and github.developer_score %}
+                    {% set score = github.developer_score %}
+
+                    <!-- 1. CONSISTENCY METRIC -->
+                    <div class="capability-item">
+                        <div class="cap-icon" style="color: #4CAF50;">
+                            {% if score.consistency >= 0.7 %}
+                            <i class="fas fa-fire-alt"></i>
+                            {% elif score.consistency >= 0.4 %}
+                            <i class="fas fa-check-circle"></i>
+                            {% else %}
+                            <i class="fas fa-clock"></i>
+                            {% endif %}
+                        </div>
+                        <div class="cap-text">
+                            <h4>
+                                {% if score.consistency >= 0.7 %}
+                                Highly Consistent
+                                {% elif score.consistency >= 0.4 %}
+                                Active Developer
+                                {% else %}
+                                Occasional Coder
+                                {% endif %}
+                            </h4>
+                            <p>
+                                {% if score.consistency >= 0.7 %}
+                                Daily Contributions
+                                {% elif score.consistency >= 0.4 %}
+                                Regular Commits
+                                {% else %}
+                                Sporadic Activity
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2. IMPACT / ENGAGEMENT METRIC -->
+                    <div class="capability-item">
+                        <div class="cap-icon" style="color: #000;">
+                            {% if score.impact >= 0.6 %}
+                            <i class="fas fa-star"></i>
+                            {% elif score.impact >= 0.3 %}
+                            <i class="fas fa-users"></i>
+                            {% else %}
+                            <i class="fas fa-seedling"></i>
+                            {% endif %}
+                        </div>
+                        <div class="cap-text">
+                            <h4>
+                                {% if score.impact >= 0.6 %}
+                                High Impact
+                                {% elif score.impact >= 0.3 %}
+                                Engaged Contributor
+                                {% else %}
+                                Growing Portfolio
+                                {% endif %}
+                            </h4>
+                            <p>
+                                {% if score.impact >= 0.6 %}
+                                Open Source Leader
+                                {% elif score.impact >= 0.3 %}
+                                Community Participant
+                                {% else %}
+                                Personal Projects
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 3. DEPTH / LEARNING METRIC -->
+                    <div class="capability-item">
+                        <div class="cap-icon" style="color: #FF9800;">
+                            {% if score.depth >= 0.7 %}
+                            <i class="fas fa-brain"></i>
+                            {% elif score.depth >= 0.4 %}
+                            <i class="fas fa-layer-group"></i>
+                            {% else %}
+                            <i class="fas fa-rocket"></i>
+                            {% endif %}
+                        </div>
+                        <div class="cap-text">
+                            <h4>
+                                {% if score.depth >= 0.7 %}
+                                Subject Matter Expert
+                                {% elif skills_data|length > 4 %}
+                                Polyglot Developer
+                                {% else %}
+                                Focused Learner
+                                {% endif %}
+                            </h4>
+                            <p>
+                                {% if score.depth >= 0.7 %}
+                                Deep Technical Knowledge
+                                {% elif skills_data|length > 4 %}
+                                Broad Tech Stack
+                                {% else %}
+                                Specializing Skills
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    {% else %}
+                    <!-- Fallback / Empty State -->
+                    <div style="text-align:center; padding: 20px; color:#999; font-size: 0.9rem;">
+                        <i class="fab fa-github" style="font-size: 24px; margin-bottom: 8px;"></i>
+                        <p>Sync GitHub to generate snapshot.</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- 2. Post Analytics (single unified card) -->
+                <div class="profile-card card-padding">
                     <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 15px;">Post Analytics</h3>
 
-                    <div class="analytics-graph">
+                    <!-- Engagement Rate graph -->
+                    <div class="analytics-graph" style="margin-bottom: 16px;">
                         <div class="graph-title">Engagement Rate</div>
                         <div class="graph-value">{{ analytics.get('engagement_rate', 0) }}%</div>
 
-                        <!-- Simple CSS Graph (Visual Only) -->
+                        <!-- Simple CSS Bar Graph -->
                         <div class="graph-line-container">
                             <div class="graph-point" style="height: 20%;"></div>
                             <div class="graph-point" style="height: 35%;"></div>
@@ -561,6 +612,7 @@
                         </div>
                     </div>
 
+                    <!-- Stat rows — inside the same card -->
                     <div class="analytics-stat-row">
                         <div class="stat-icon-circle icon-heart"><i class="fas fa-heart"></i></div>
                         <span class="analytics-label">Total Likes</span>
@@ -585,7 +637,7 @@
                         <span class="analytics-val">{{ analytics.get('impressions', 0) }}</span>
                     </div>
 
-                    <div class="analytics-stat-row">
+                    <div class="analytics-stat-row" style="margin-bottom: 0;">
                         <div class="stat-icon-circle icon-reach"><i class="fas fa-users"></i></div>
                         <span class="analytics-label">Reach</span>
                         <span class="analytics-val">{{ analytics.get('reach', 0) }}</span>
@@ -658,6 +710,103 @@
             });
         }
     </script>
+
+    <!-- ====== Chart.js: Skills Analysis Doughnut ====== -->
+    <script>
+        (function () {
+            const dataEl = document.getElementById('skillsDataJSON');
+            const canvas = document.getElementById('skillsDonutChart');
+            if (!dataEl || !canvas) return;
+
+            const raw = JSON.parse(dataEl.textContent);
+            const labels = raw.labels;
+            const values = raw.values;
+            const colors = raw.colors.slice(0, labels.length);
+
+            // ---- Centre-text plugin ----
+            const centreTextPlugin = {
+                id: 'centreText',
+                afterDraw(chart) {
+                    const { ctx, chartArea: { width, height, left, top } } = chart;
+                    const activeEl = chart.getActiveElements();
+
+                    let label, pct;
+                    if (activeEl.length) {
+                        const idx = activeEl[0].index;
+                        label = labels[idx];
+                        pct = values[idx].toFixed(1) + '%';
+                    } else {
+                        label = labels[0];
+                        pct = values[0].toFixed(1) + '%';
+                    }
+
+                    const cx = left + width / 2;
+                    const cy = top + height / 2;
+
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    ctx.font = 'bold 22px Inter, sans-serif';
+                    ctx.fillStyle = '#111';
+                    ctx.fillText(pct, cx, cy - 10);
+
+                    ctx.font = '11px Inter, sans-serif';
+                    ctx.fillStyle = '#666';
+                    ctx.fillText(label, cx, cy + 12);
+                    ctx.restore();
+                }
+            };
+
+            new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        hoverBackgroundColor: colors.map(c => c + 'dd'),
+                        borderWidth: 3,
+                        borderColor: '#fff',
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    cutout: '70%',
+                    animation: { animateRotate: true, duration: 900, easing: 'easeInOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.label}: ${ctx.parsed.toFixed(1)}%`
+                            }
+                        }
+                    },
+                    onHover: (evt, els, chart) => {
+                        canvas.style.cursor = els.length ? 'pointer' : 'default';
+                        chart.update('none');
+                    }
+                },
+                plugins: [centreTextPlugin]
+            });
+
+            // Build the legend
+            const legendEl = document.getElementById('skillsLegend');
+            if (legendEl) {
+                labels.forEach((lang, i) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = 'display:flex; align-items:center; gap:6px; font-size:0.78rem; color:#333; overflow:hidden;';
+                    item.innerHTML = `
+                    <span style="width:10px;height:10px;border-radius:50%;background:${colors[i]};flex-shrink:0;"></span>
+                    <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${lang} (${values[i].toFixed(1)}%)">
+                        ${lang} <strong>${values[i].toFixed(1)}%</strong>
+                    </span>`;
+                    legendEl.appendChild(item);
+                });
+            }
+        })();
+    </script>
+
 </body>
 
 </html>

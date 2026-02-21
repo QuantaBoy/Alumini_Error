@@ -3,6 +3,8 @@ from flask_login import login_required, current_user
 from app.models import GithubProfile, LinkedinProfile, User
 from app.db import db
 from app.services.github_sync_service import sync_github_for_user
+from datetime import datetime, timedelta
+import threading
 
 profile_bp = Blueprint("profile", __name__)
 
@@ -42,29 +44,39 @@ def profile_page():
         .first()
     )
 
-    codechef_data = None
-    if user.codechef_username:
-        try:
-            from app.services.codechef_service import fetch_codechef_user
-            codechef_data = fetch_codechef_user(user.codechef_username)
-        except Exception as e:
-            print(f"Error fetching CodeChef data: {e}")
+    # --- CP STATS CACHE LOGIC ---
+    from flask import current_app
+    from app.services.stats_sync_service import sync_all_cp_stats
 
-    codeforces_data = None
-    if user.codeforces_username:
-        try:
-            from app.services.codeforces_service import fetch_codeforces_user
-            codeforces_data = fetch_codeforces_user(user.codeforces_username)
-        except Exception as e:
-            print(f"Error fetching CodeForces data: {e}")
+    # 1. Use cached data from DB
+    codechef_data = user.codechef_data
+    codeforces_data = user.codeforces_data
+    leetcode_data = user.leetcode_data
+    hackerrank_data = user.hackerrank_data
 
-    leetcode_data = None
-    if user.leetcode_username:
-        try:
-            from app.services.leetcode_service import fetch_leetcode_user
-            leetcode_data = fetch_leetcode_user(user.leetcode_username)
-        except Exception as e:
-             print(f"Error fetching LeetCode data: {e}")
+    # 2. Check if background sync is needed (missing data or > 1 hour old)
+    needs_sync = False
+    if not user.last_stats_sync:
+        needs_sync = True
+    elif (datetime.utcnow() - user.last_stats_sync) > timedelta(hours=1):
+        needs_sync = True
+    
+    # Force sync if username exists but data is missing
+    if (user.codechef_username and not codechef_data) or \
+       (user.codeforces_username and not codeforces_data) or \
+       (user.leetcode_username and not leetcode_data) or \
+       (user.hackerrank_username and not hackerrank_data):
+        needs_sync = True
+
+    if needs_sync:
+        real_app = current_app._get_current_object()
+        def bg_stats_sync(app_obj, u_id):
+            with app_obj.app_context():
+                from app.models import User
+                u = User.query.get(u_id)
+                if u:
+                    sync_all_cp_stats(u)
+        threading.Thread(target=bg_stats_sync, args=(real_app, user.id)).start()
 
     # --- POST ANALYTICS CALCULATION ---
     post_analytics = {
@@ -162,7 +174,7 @@ def profile_page():
         leetcode=leetcode_data,
         codeforces=codeforces_data,
         codechef=codechef_data,
-        hackerrank=None,
+        hackerrank=hackerrank_data,
         analytics=post_analytics,
         skills_data=skills_data,
         skills_gradient=skills_gradient,

@@ -29,6 +29,13 @@ class User(UserMixin, db.Model):
     last_linkedin_sync = db.Column(db.DateTime)
     linkedin_sync_status = db.Column(db.String(20))
 
+    # --- COMPETITIVE PROGRAMMING CACHE ---
+    leetcode_data = db.Column(JSON)
+    codeforces_data = db.Column(JSON)
+    codechef_data = db.Column(JSON)
+    hackerrank_data = db.Column(JSON)
+    last_stats_sync = db.Column(db.DateTime)
+
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
