@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, make_response
+from flask import Blueprint, render_template, request, redirect, url_for, make_response, jsonify
 from flask_login import login_required, current_user
 from app.models import GithubProfile, LinkedinProfile, User
 from app.db import db
@@ -7,6 +7,116 @@ from datetime import datetime, timedelta
 import threading
 
 profile_bp = Blueprint("profile", __name__)
+
+
+def compute_post_analytics(linkedin_profile):
+    """Compute enriched post analytics from a LinkedinProfile.
+    Returns a dict with real metrics derived from scraped LinkedIn post data.
+    """
+    post_analytics = {
+        "total_posts": 0,
+        "likes": 0,
+        "comments": 0,
+        "shares": 0,
+        "total_interactions": 0,
+        "avg_likes": 0,
+        "avg_comments": 0,
+        "avg_shares": 0,
+        "impressions": 0,
+        "reach": 0,
+        "engagement_rate": 0,
+        "virality_score": 0,
+        "top_post_likes": 0,
+        "top_post_text": "",
+        "content_tier": "No Data",   # e.g. Thought Leader, Active, Growing, etc.
+    }
+
+    if not linkedin_profile:
+        return post_analytics
+
+    posts = linkedin_profile.posts if hasattr(linkedin_profile, 'posts') else linkedin_profile.get('posts', [])
+    posts = posts if isinstance(posts, list) else []
+
+    if not posts:
+        return post_analytics
+
+    post_analytics["total_posts"] = len(posts)
+    top_post = None
+    top_likes = 0
+
+    for post in posts:
+        stats = post.get('stats', {}) if isinstance(post, dict) else getattr(post, 'stats', {})
+        likes    = stats.get('like', 0)    if isinstance(stats, dict) else getattr(stats, 'like', 0)
+        comments = stats.get('comments', 0) if isinstance(stats, dict) else getattr(stats, 'comments', 0)
+        reposts  = stats.get('reposts', 0)  if isinstance(stats, dict) else getattr(stats, 'reposts', 0)
+
+        post_analytics['likes']    += likes
+        post_analytics['comments'] += comments
+        post_analytics['shares']   += reposts
+
+        # Track top performing post
+        if likes > top_likes:
+            top_likes = likes
+            top_post = post
+
+    n = post_analytics["total_posts"]
+    post_analytics["total_interactions"] = post_analytics['likes'] + post_analytics['comments'] + post_analytics['shares']
+
+    # Averages per post
+    post_analytics["avg_likes"]    = round(post_analytics['likes'] / n, 1)
+    post_analytics["avg_comments"] = round(post_analytics['comments'] / n, 1)
+    post_analytics["avg_shares"]   = round(post_analytics['shares'] / n, 1)
+
+    # Estimated impressions & reach (industry heuristic: ~1 interaction ≈ 20 impressions)
+    if post_analytics["total_interactions"] > 0:
+        post_analytics["impressions"] = post_analytics["total_interactions"] * 20
+        post_analytics["reach"]       = int(post_analytics["impressions"] * 0.65)
+        post_analytics["engagement_rate"] = round(
+            (post_analytics["total_interactions"] / post_analytics["impressions"]) * 100, 1
+        )
+
+    # Virality Score: weighted formula (shares count 3x, comments 2x, likes 1x)
+    weighted = (post_analytics['shares'] * 3) + (post_analytics['comments'] * 2) + post_analytics['likes']
+    post_analytics["virality_score"] = round(min(weighted / max(n, 1) / 10, 10), 1)  # out of 10
+
+    # Top post
+    post_analytics["top_post_likes"] = top_likes
+    if top_post:
+        text = top_post.get('text', '') if isinstance(top_post, dict) else getattr(top_post, 'text', '')
+        post_analytics["top_post_text"] = (text[:120] + "...") if text and len(text) > 120 else (text or "")
+
+    # Content Tier based on avg engagement
+    avg = post_analytics["avg_likes"]
+    if avg >= 50:
+        post_analytics["content_tier"] = "Thought Leader"
+    elif avg >= 20:
+        post_analytics["content_tier"] = "High Influencer"
+    elif avg >= 8:
+        post_analytics["content_tier"] = "Active Creator"
+    elif avg >= 2:
+        post_analytics["content_tier"] = "Growing Voice"
+    else:
+        post_analytics["content_tier"] = "Early Stage"
+
+    return post_analytics
+
+
+@profile_bp.route('/analytics', methods=['GET'])
+@login_required
+def analytics_data():
+    """Return latest post analytics as JSON for the current user."""
+    user = current_user
+    from app.models import LinkedinProfile
+
+    linkedin = (
+        LinkedinProfile.query
+        .filter_by(user_id=user.id)
+        .order_by(LinkedinProfile.synced_at.desc())
+        .first()
+    )
+
+    analytics = compute_post_analytics(linkedin)
+    return jsonify(analytics)
 
 # =========================
 # PROFILE PAGE
@@ -61,12 +171,16 @@ def profile_page():
     elif (datetime.utcnow() - user.last_stats_sync) > timedelta(hours=1):
         needs_sync = True
     
-    # Force sync if username exists but data is missing
-    if (user.codechef_username and not codechef_data) or \
-       (user.codeforces_username and not codeforces_data) or \
-       (user.leetcode_username and not leetcode_data) or \
-       (user.hackerrank_username and not hackerrank_data):
-        needs_sync = True
+    # 3. Force sync if username exists but data is missing (only if not synced in last 15m to prevent loops)
+    if not needs_sync:
+        if (user.codechef_username and not codechef_data) or \
+           (user.codeforces_username and not codeforces_data) or \
+           (user.leetcode_username and not leetcode_data) or \
+           (user.hackerrank_username and not hackerrank_data):
+            
+            # If we've never synced OR it was more than 15 mins ago, try again
+            if not user.last_stats_sync or (datetime.utcnow() - user.last_stats_sync) > timedelta(minutes=15):
+                needs_sync = True
 
     if needs_sync:
         real_app = current_app._get_current_object()
@@ -79,29 +193,7 @@ def profile_page():
         threading.Thread(target=bg_stats_sync, args=(real_app, user.id)).start()
 
     # --- POST ANALYTICS CALCULATION ---
-    post_analytics = {
-        "likes": 0,
-        "comments": 0,
-        "shares": 0,
-        "impressions": 0,
-        "reach": 0,
-        "engagement_rate": 0
-    }
-
-    if linkedin and linkedin.posts:
-        posts = linkedin.posts if isinstance(linkedin.posts, list) else []
-        for post in posts:
-            stats = post.get("stats", {})
-            post_analytics["likes"] += stats.get("like", 0)
-            post_analytics["comments"] += stats.get("comments", 0)
-            post_analytics["shares"] += stats.get("reposts", 0)
-        
-        # Estimate Impressions & Reach (as scraper doesn't get these private metrics)
-        interactions = post_analytics["likes"] + post_analytics["comments"] + post_analytics["shares"]
-        if interactions > 0:
-            post_analytics["impressions"] = interactions * 20 # Rough multiplier
-            post_analytics["reach"] = int(post_analytics["impressions"] * 0.65)
-            post_analytics["engagement_rate"] = round((interactions / post_analytics["impressions"]) * 100, 1)
+    post_analytics = compute_post_analytics(linkedin)
     # --- SKILLS / LANGUAGE ANALYSIS ---
     skills_data = {}
     if github and github.language_intelligence:
@@ -308,5 +400,10 @@ def resync_linkedin():
     
     linkedin_thread = threading.Thread(target=bg_sync_linkedin, args=(real_app_li, user.id))
     linkedin_thread.start()
+
+    # If this is an XHR (AJAX) request, return JSON so the client can stay on the page
+    from flask import request, jsonify
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json:
+        return jsonify({"status": "started", "message": "LinkedIn resync started"})
 
     return redirect(url_for("profile.profile_page"))

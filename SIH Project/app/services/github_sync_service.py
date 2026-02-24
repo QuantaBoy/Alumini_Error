@@ -49,7 +49,16 @@ def sync_github_for_user(user):
         user.github_sync_status = "success"
         db.session.commit()
 
+        # 🔔 Notify client via SocketIO
+        from app import socketio
+        socketio.emit("sync_complete", {"type": "github", "user_id": user.id})
+
     except Exception as e:
         user.github_sync_status = "failed"
         db.session.commit()
         print("GitHub sync failed:", e)
+        try:
+            from app import socketio
+            socketio.emit("sync_complete", {"type": "github_failed", "user_id": user.id})
+        except Exception:
+            pass

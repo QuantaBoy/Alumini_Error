@@ -59,6 +59,13 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan"
     )
 
+    posts = db.relationship(
+        "Post",
+        backref="user",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
 class LinkedinProfile(db.Model):
     __tablename__ = "linkedin_profiles"
 

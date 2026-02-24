@@ -7,18 +7,32 @@ from bs4 import BeautifulSoup
 import os
 import pickle
 import re
+from datetime import datetime
 
-# Ensure undetected_chromedriver is installed
+# Ensure undetected_chromedriver and selenium are available.
+# If they're missing, do NOT exit the whole process during import —
+# raise a clear runtime error when the scraper is instantiated instead.
+_HAS_DEPS = True
 try:
     import undetected_chromedriver as uc
     from selenium.webdriver.common.by import By
     from selenium.webdriver.support.ui import WebDriverWait
     from selenium.webdriver.support import expected_conditions as EC
 except ImportError as e:
+    _HAS_DEPS = False
     print("CRITICAL ERROR: specific libraries are missing.")
     print(f"Details: {e}")
-    print("Please run: pip install undetected-chromedriver selenium beautifulsoup4")
-    exit(1)
+    print("Please run: pip install -r requirements.txt (undetected-chromedriver selenium beautifulsoup4)")
+
+    class LinkedInProScraper:
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError(
+                "LinkedIn scraper dependencies are not installed. Install requirements and restart the app."
+            )
+    # Provide minimal placeholders to avoid NameErrors elsewhere if referenced accidentally
+    By = None
+    WebDriverWait = None
+    EC = None
 
 # ------------------------------------------------------------------------------
 # Rich Data Structures (Matching Apify-style Output)
@@ -144,24 +158,71 @@ class LinkedInProScraper:
 
     def _setup_driver(self, use_proxy, proxy_string):
         options = uc.ChromeOptions()
+        
+        # Stability Flags for Undetected Chromedriver
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
+        options.add_argument("--no-first-run")
+        options.add_argument("--disable-notifications")
+        options.add_argument("--disable-popup-blocking")
         options.add_argument("--start-maximized")
-        # HEADLESS MODE (Invisible) - Commented out for visual verification
-        options.add_argument("--headless=new") 
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--ignore-certificate-errors")
+        
+        # Local user data directory to avoid path/permission issues on Windows
+        import uuid
+        user_data_dir = os.path.abspath(os.path.join(os.getcwd(), ".uc_profile"))
+        if not os.path.exists(user_data_dir):
+            os.makedirs(user_data_dir, exist_ok=True)
+        options.add_argument(f"--user-data-dir={user_data_dir}")
+
+        # NOTE: LinkedIn heavily restricts headless browsers on feed/activity pages.
+        # We run in a visible window by default. Set LINKEDIN_HEADFUL=1 to keep it visible intentionally.
+        # Headless mode is intentionally disabled to avoid being blocked by LinkedIn.
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-dev-shm-usage")
+        # NOTE: Do NOT disable images - LinkedIn's feed needs images enabled to render JS properly
 
         if use_proxy and proxy_string:
             print(f"Configuring Proxy: {proxy_string}")
             options.add_argument(f'--proxy-server={proxy_string}')
 
+        max_startup_retries = 2
+        for i in range(max_startup_retries):
+            try:
+                # Cleanup zombie processes on Windows
+                if os.name == 'nt' and i == 0:
+                    try: os.system("taskkill /f /im chromedriver.exe /t >nul 2>&1")
+                    except: pass
+
+                self._log_debug(f"Starting uc.Chrome (Attempt {i+1})...")
+                driver = uc.Chrome(options=options, version_main=None)
+                
+                # Critical: wait for browser to fully initialize
+                time.sleep(5)
+                
+                # Quick check if it's responsive
+                _ = driver.current_url
+                self._log_debug("Chrome initialized successfully.")
+                return driver
+            except Exception as e:
+                self._log_debug(f"Chrome initialization attempt {i+1} failed: {e}")
+                if i == max_startup_retries - 1:
+                    raise e
+                time.sleep(3)
+
+    def _is_driver_alive(self):
+        """Check if the driver is still responsive."""
         try:
-            driver = uc.Chrome(options=options, use_subprocess=True)
-            return driver
-        except Exception as e:
-            print(f"Failed to start Undetected Chrome: {e}")
-            raise e
+            if not self.driver: return False
+            # Simple check that doesn't trigger a navigation
+            _ = self.driver.current_url
+            return True
+        except Exception:
+            return False
 
     # --------------------------------------------------------------------------
     # Human Simulation
@@ -170,29 +231,45 @@ class LinkedInProScraper:
     def _human_delay(self, min_seconds=2, max_seconds=5):
         time.sleep(random.uniform(min_seconds, max_seconds))
 
-    def _simulate_human_scroll(self):
-        """Standard human-like scrolling down the page."""
-        # In headless, sometimes body height extraction can be tricky, but this generally works.
-        total_height = self.driver.execute_script("return document.body.scrollHeight")
-        current_position = self.driver.execute_script("return window.pageYOffset")
-        
-        while current_position < total_height:
-            scroll_step = random.randint(300, 600) 
-            current_position += scroll_step
-            self.driver.execute_script(f"window.scrollTo(0, {current_position});")
-            time.sleep(random.uniform(0.5, 1.2))
+    def _simulate_human_scroll(self, max_scrolls=15):
+        """Standard human-like scrolling down the page with a safety limit."""
+        try:
+            total_height = self.driver.execute_script("return document.body.scrollHeight")
+            current_position = self.driver.execute_script("return window.pageYOffset")
+            scrolls = 0
             
-            # Occasional pause/scroll up
-            if random.random() < 0.15:
-                current_position -= random.randint(50, 150)
+            while current_position < total_height and scrolls < max_scrolls:
+                scroll_step = random.randint(400, 800) 
+                current_position += scroll_step
                 self.driver.execute_script(f"window.scrollTo(0, {current_position});")
-                time.sleep(random.uniform(1.0, 2.0))
+                time.sleep(random.uniform(0.8, 1.5))
+                
+                # Occasional pause/scroll up
+                if random.random() < 0.1:
+                    current_position -= random.randint(100, 200)
+                    self.driver.execute_script(f"window.scrollTo(0, {current_position});")
+                    time.sleep(random.uniform(1.0, 2.0))
+                
+                new_height = self.driver.execute_script("return document.body.scrollHeight")
+                if new_height > total_height:
+                    total_height = new_height
+                
+                scrolls += 1
+                if current_position >= total_height:
+                    break
             
-            new_height = self.driver.execute_script("return document.body.scrollHeight")
-            if new_height > total_height:
-                total_height = new_height
-            if current_position >= total_height:
-                break
+            self._log_debug(f"Finished scrolling. Scrolls done: {scrolls}")
+        except Exception as e:
+            self._log_debug(f"Scroll failed gently: {e}")
+
+    def _log_debug(self, msg: str):
+        """Internal helper to log to debug_sync.txt"""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open("debug_sync.txt", "a", encoding="utf-8") as f:
+                f.write(f"[{timestamp}] [Scraper] {msg}\n")
+        except:
+            pass
 
     def _clean_text(self, text: Optional[str]) -> str:
         if not text: return ""
@@ -204,31 +281,80 @@ class LinkedInProScraper:
 
     def login_and_save_cookies(self):
         print("Checking session state...")
-        self.driver.get("https://www.linkedin.com/login")
-        time.sleep(3)
+        
+        # Initial navigation with retry
+        max_nav_retries = 2
+        for attempt in range(max_nav_retries):
+            try:
+                if not self._is_driver_alive():
+                    print(f"Driver not alive before navigation (attempt {attempt+1})")
+                    return # Scraper will catch this in scrape_full_profile
+                
+                self.driver.get("https://www.linkedin.com/login")
+                time.sleep(4)
+                break
+            except Exception as e:
+                print(f"Login page load attempt {attempt+1} failed: {e}")
+                if attempt == max_nav_retries - 1:
+                    return
+                time.sleep(3)
 
-        if os.path.exists("linkedin_cookies.pkl"):
+        # Cookie loading with basic integrity check
+        # Use absolute path based on script location to avoid CWD-dependent issues
+        _script_dir = os.path.dirname(os.path.abspath(__file__))
+        _project_root = os.path.dirname(os.path.dirname(_script_dir))  # app/services -> app -> project root
+        cookie_file = os.path.join(_project_root, "linkedin_cookies.pkl")
+        print(f"Looking for cookies at: {cookie_file}")
+        if os.path.exists(cookie_file) and os.path.getsize(cookie_file) > 64:
             print("Loading cookies...")
-            cookies = pickle.load(open("linkedin_cookies.pkl", "rb"))
-            for cookie in cookies:
-                try: self.driver.add_cookie(cookie)
-                except: pass
-            self.driver.get("https://www.linkedin.com/feed/")
-            time.sleep(5)
+            try:
+                with open(cookie_file, "rb") as f:
+                    cookies = pickle.load(f)
+                
+                # Filter cookies to avoid domain mismatch errors
+                for cookie in cookies:
+                    try:
+                        # uc sometimes gets grumpy if we don't fix expiry types
+                        if 'expiry' in cookie:
+                            cookie['expiry'] = int(cookie['expiry'])
+                        self.driver.add_cookie(cookie)
+                    except Exception:
+                        pass
+                
+                self.driver.get("https://www.linkedin.com/feed/")
+                time.sleep(5)
+            except Exception as e:
+                print(f"Error applying cookies: {e}")
         
         if "feed" in self.driver.current_url:
-            print("Logged in!")
+            print("Logged in successfully via cookies!")
             return
 
+        # Chrome is running in visible (non-headless) mode.
+        # If cookies failed, show the action-required prompt and wait for manual login.
+        print(f"Session expired or cookies invalid. Current URL: {self.driver.current_url}")
+        if "checkpoint" in self.driver.current_url:
+            print("LinkedIn security checkpoint detected! Please resolve it in the browser window.")
+        
         print("\n" + "="*50)
-        print("ACTION REQUIRED: Log in manually to LinkedIn.")
+        print("ACTION REQUIRED: Log in manually to the LinkedIn window that just opened.")
+        print("The app will wait up to 2 minutes for you to log in.")
         print("="*50 + "\n")
         
-        while "feed" not in self.driver.current_url:
-            time.sleep(1)
+        # Wait up to 2 minutes for manual login
+        start_time = time.time()
+        while "feed" not in self.driver.current_url and (time.time() - start_time) < 120:
+            time.sleep(2)
         
-        print("Login detected! Saving cookies...")
-        pickle.dump(self.driver.get_cookies(), open("linkedin_cookies.pkl", "wb"))
+        if "feed" in self.driver.current_url:
+            print("Login detected! Saving cookies for future use...")
+            try:
+                pickle.dump(self.driver.get_cookies(), open(cookie_file, "wb"))
+                print(f"Cookies saved to: {cookie_file}")
+            except Exception as e:
+                print(f"Failed to save cookies: {e}")
+        else:
+            print("Login timed out or failed.")
 
     # --------------------------------------------------------------------------
     # Detailed Extraction Logic
@@ -279,19 +405,56 @@ class LinkedInProScraper:
             pass
 
     def get_profile_main(self, url: str) -> Profile:
-        print(f"Navigating to Profile: {url}")
-        self.driver.get(url)
-        self._human_delay(5, 8) # Longer wait for initial load
+        self._log_debug(f"Navigating to Profile: {url}")
+        try:
+            self.driver.get(url)
+            self._human_delay(3, 5) 
+        except Exception as e:
+            self._log_debug(f"Failed to navigate to profile: {e}")
+            return Profile(linkedinUrl=url)
+
+        if not self._is_driver_alive():
+            return Profile(linkedinUrl=url)
         
         # Check for Common Roadblocks
         current_url = self.driver.current_url.lower()
         if "login" in current_url or "checkpoint" in current_url or "security" in current_url:
-            print(f"CRITICAL: Scraper blocked by LinkedIn security/login wall. Current URL: {self.driver.current_url}")
-            # If we have a login wall, we can't scrape main info accurately
-            # But let's try to proceed in case it's just a soft wall
+            self._log_debug(f"Scraper blocked: {self.driver.current_url}")
         
-        self._simulate_human_scroll() # Trigger lazy loading
-        
+        self._log_debug("Starting initial page scroll...")
+        self._simulate_human_scroll(max_scrolls=5) # profile top doesn't need much
+
+        if not self._is_driver_alive():
+            return Profile(linkedinUrl=url)
+
+        # Attempt to expand collapsed sections
+        self._log_debug("Attempting to expand sections...")
+        try:
+            expand_selectors = [
+                "//button[contains(normalize-space(.),'See more')]",
+                "//button[contains(normalize-space(.),'see more')]",
+                "//button[contains(@aria-label,'See more')]",
+                ".inline-show-more-text__button",
+                ".pv-profile-section__card-action-bar button",
+            ]
+            for sel in expand_selectors:
+                try:
+                    if sel.startswith("//"):
+                        els = self.driver.find_elements(By.XPATH, sel)
+                    else:
+                        els = self.driver.find_elements(By.CSS_SELECTOR, sel)
+                    for el in els:
+                        try:
+                            if el and el.is_displayed():
+                                el.click()
+                                time.sleep(0.5)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Wait for name tag to ensure page is settled
         try:
             WebDriverWait(self.driver, 10).until(
@@ -299,13 +462,13 @@ class LinkedInProScraper:
             )
         except:
             print("Timed out waiting for H1 name tag. Proceeding anyway...")
-        
+
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
         profile = Profile(linkedinUrl=url)
 
         # DEBUG: Save a snippet of the page source if things look empty
         if not soup.find("h1"):
-            print("WARNING: Name tag (H1) not found. Page might not have rendered or is a restricted view.")
+            print(f"WARNING: Name tag (H1) not found. Page might not have rendered or is a restricted view. URL: {self.driver.current_url}")
         
         # Basic Info
         try:
@@ -314,9 +477,16 @@ class LinkedInProScraper:
                 soup.find("h1", class_="text-heading-xlarge") or
                 soup.find("h1", class_="top-card-layout__title") or
                 soup.select_one(".pv-top-card-layout__title") or
+                soup.select_one("h1.v-align-middle") or
                 soup.find("h1")
             )
             profile.fullName = self._clean_text(name_tag.text) if name_tag else ""
+            if not profile.fullName:
+                # Try to get from title tag as fallback
+                title_tag = soup.find("title")
+                if title_tag and "|" in title_tag.text:
+                    profile.fullName = self._clean_text(title_tag.text.split("|")[0])
+            
             print(f"Extracted Name: {profile.fullName}")
 
             # 2. Headline
@@ -347,52 +517,60 @@ class LinkedInProScraper:
                             break
 
             if about_section:
-                 print("Found About section, extracting text...")
+                print("Found About section, extracting text...")
                  
-                 # 1. Look for specialized containers first
-                 containers = [
-                     about_section.find("div", class_="pv-shared-text-with-see-more"),
-                     about_section.find("div", class_="inline-show-more-text"),
-                     about_section.find("div", class_="display-flex ph5 pv3"),
-                     about_section.select_one(".pv-profile-card__about-contents")
-                 ]
+                # 1. Look for specialized containers first
+                containers = [
+                    about_section.find("div", class_="pv-shared-text-with-see-more"),
+                    about_section.find("div", class_="inline-show-more-text"),
+                    about_section.find("div", class_="display-flex ph5 pv3"),
+                    about_section.select_one(".pv-profile-card__about-contents")
+                ]
                  
-                 bio_text = ""
-                 for c in containers:
-                     if not c: continue
+                bio_text = ""
+                for c in containers:
+                    if not c: continue
                      
-                     # Look for hidden full text span inside container
-                     hidden = c.find("span", class_="visually-hidden")
-                     txt = self._clean_text(hidden.get_text() if hidden else c.get_text())
+                    # Look for hidden full text span inside container
+                    hidden = c.find("span", class_="visually-hidden")
+                    txt = self._clean_text(hidden.get_text() if hidden else c.get_text())
                      
-                     # Check if this text is actually a bio
-                     if txt and txt.lower() != "about" and len(txt) > 10:
+                    # Check if this text is actually a bio
+                    if txt and txt.lower() != "about" and len(txt) > 10:
                         bio_text = txt
                         break
 
-                 # 2. General span search within section if still empty
-                 if not bio_text:
-                     spans = about_section.find_all("span")
-                     for s in spans:
-                         txt = self._clean_text(s.get_text())
-                         if len(txt) > 20 and txt.lower() != "about" and "see more" not in txt.lower():
-                             bio_text = txt
-                             break
+                # 2. General span search within section if still empty
+                if not bio_text:
+                    spans = about_section.find_all("span")
+                    for s in spans:
+                        txt = self._clean_text(s.get_text())
+                        if len(txt) > 20 and txt.lower() != "about" and "see more" not in txt.lower():
+                            bio_text = txt
+                            break
 
-                 # 3. Final cleaning
-                 if bio_text:
-                     # Remove "About" prefix or "see more"
-                     bio_text = re.sub(r'^about\s+', '', bio_text, flags=re.IGNORECASE).strip()
-                     bio_text = bio_text.replace("...see more", "").replace("see more", "").strip()
-                     
-                     # Double check it isn't just "About" now
-                     if bio_text.lower() == "about":
-                         bio_text = ""
-                 
-                 profile.about = bio_text
-                 print(f"Extracted About (len): {len(profile.about)}")
+                # 3. Final cleaning
+                if bio_text:
+                    # Remove "About" prefix or "see more"
+                    bio_text = re.sub(r'^about\s+', '', bio_text, flags=re.IGNORECASE).strip()
+                    bio_text = bio_text.replace("...see more", "").replace("see more", "").strip()
+                    
+                    # Double check it isn't just "About" now
+                    if bio_text.lower() == "about":
+                        bio_text = ""
+                
+                profile.about = bio_text
+                print(f"Extracted About (len): {len(profile.about)}")
             else:
                 print("ABORT: About section element not found in soup.")
+                # Save a debug snapshot of the current page to help diagnose selector issues
+                try:
+                    fname = f"linkedin_about_debug_{int(time.time())}.html"
+                    with open(fname, "w", encoding="utf-8") as fh:
+                        fh.write(self.driver.page_source)
+                    print(f"Saved debug HTML snippet to {fname}")
+                except Exception as dex:
+                    print("Failed to save debug HTML snippet:", dex)
             
             # 5. Profile Pic (High Quality from img tag)
             img_tag = (
@@ -537,38 +715,51 @@ class LinkedInProScraper:
         print(f"Getting Posts from: {url_all}")
         
         self.driver.get(url_all)
-        self._human_delay(5, 7)
+        self._human_delay(8, 12)  # Wait longer for activity feed to initialize
+        print(f"  > Activity feed URL after navigation: {self.driver.current_url}")
         
-        # Initial scroll to trigger loading
-        self._simulate_human_scroll()
-
-        # Deep Scroll Loop to load more content
-        # Reduced limit for faster scraping
-        max_attempts = 2 
+        # Deep Scroll Loop
+        max_attempts = 3 # Increased scrolls
         min_posts_desired = 10
         
-        print(f" scrolling {max_attempts} times to load posts...")
+        # Selectors for identifying post containers
+        post_selectors_css = 'div.feed-shared-update-v2, li.profile-creator-shared-feed-update__container, div.occludable-update, div[data-urn^="urn:li:activity:"], .scaffold-finite-scroll__content > div'
+
+        print(f" scrolling up to {max_attempts} times to load posts...")
         for i in range(max_attempts):
             # Scroll down
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            self._human_delay(2, 4) 
+            self._human_delay(3, 5) 
             
             # Check for "Show more results" button and click it
             try:
                 # Common classes for the "Show more" button in activity feed
-                buttons = self.driver.find_elements(By.CLASS_NAME, "scaffold-finite-scroll__load-button")
-                for btn in buttons:
-                    if btn.is_displayed():
-                        print("  > Clicking 'Show more results' button...")
-                        self.driver.execute_script("arguments[0].click();", btn)
-                        self._human_delay(3, 5) # Wait for load
+                btn_selectors = [
+                    ".scaffold-finite-scroll__load-button",
+                    "button.artdeco-button--muted",
+                    "//button[contains(., 'Show more')]",
+                    "//button[contains(., 'Load more')]"
+                ]
+                for sel in btn_selectors:
+                    try:
+                        if sel.startswith("//"):
+                            btns = self.driver.find_elements(By.XPATH, sel)
+                        else:
+                            btns = self.driver.find_elements(By.CSS_SELECTOR, sel)
+                        
+                        for btn in btns:
+                            if btn.is_displayed():
+                                print("  > Clicking 'Show more results' button...")
+                                self.driver.execute_script("arguments[0].click();", btn)
+                                self._human_delay(4, 6)
+                                break
+                    except: pass
             except Exception:
                 pass
 
             # Quick check count
             soup = BeautifulSoup(self.driver.page_source, "html.parser")
-            containers = soup.find_all("div", class_="feed-shared-update-v2") or \
-                         soup.find_all("li", class_="profile-creator-shared-feed-update__container")
+            containers = soup.select(post_selectors_css)
             
             count = len(containers)
             print(f"  > Scroll {i+1}/{max_attempts}: Loaded {count} posts.")
@@ -577,124 +768,123 @@ class LinkedInProScraper:
                 print("  > Reached desired post count.")
                 break
         
-        # Final Extraction from full page source
+        # Final Extraction
         soup = BeautifulSoup(self.driver.page_source, "html.parser")
-        
-        # Selectors
-        post_containers = soup.find_all("div", class_="feed-shared-update-v2") or \
-                          soup.find_all("li", class_="profile-creator-shared-feed-update__container") or \
-                          soup.find_all("div", class_="occludable-update")
+        post_containers = soup.select(post_selectors_css)
 
         if not post_containers:
-            print("WARNING: No post containers found with standard selectors.")
+            print(f"WARNING: No post containers found. Page structure might have changed. URL: {self.driver.current_url}")
+            # Try last-ditch effort to find any urn
             post_containers = soup.select('div[data-urn]')
 
         print(f"Extracting details from {len(post_containers)} matched containers...")
 
         for container in post_containers:
             try:
+                # Basic check to avoid non-post elements if using broad selectors
+                if not container.get('data-urn') and 'update' not in str(container.get('class')):
+                     if not container.find('span', class_='break-words'):
+                         continue
+
                 post = Post()
                 
-                # Text Content
-                text_div = container.find("div", class_="feed-shared-update-v2__description-wrapper") or \
-                           container.find("div", class_="feed-shared-inline-show-more-text") or \
-                           container.find("div", class_="feed-shared-text") or \
-                           container.find("span", class_="break-words")
+                # Text Content - Use broader search
+                text_selectors = [
+                    "div.feed-shared-update-v2__description-wrapper",
+                    "div.feed-shared-inline-show-more-text",
+                    "div.feed-shared-text",
+                    "div.update-components-text",
+                    "span.break-words",
+                    ".update-components-text span"
+                ]
+                
+                text_div = None
+                for sel in text_selectors:
+                    if sel.startswith('.'):
+                        text_div = container.select_one(sel)
+                    else:
+                        # Try both find and select_one for complex class names
+                        text_div = container.select_one(sel.replace('div.', 'div').replace('span.', 'span'))
+                    if text_div: break
                 
                 if text_div:
                     raw_text = text_div.get_text(separator=" ").strip()
                     post.text = self._clean_text(raw_text.replace("...see more", ""))
                 
-                # Author
-                post.author.username = profile.linkedinUrl.split("/in/")[-1].replace("/", "")
-                post.author.first_name = profile.fullName.split(" ")[0] if profile.fullName else "Unknown"
+                # Author Info
+                try:
+                    username_part = profile.linkedinUrl.split("/in/")[-1].replace("/", "")
+                    post.author.username = username_part
+                    post.author.first_name = profile.fullName.split(" ")[0] if profile.fullName else "Unknown"
+                except: pass
                 
-                # Date
-                time_span = container.find("span", class_="feed-shared-actor__subtext") or \
-                            container.find("a", class_="app-aware-link feed-shared-actor__subtext-link")
-                
-                if time_span:
-                    full_time_text = self._clean_text(time_span.text)
+                # Date/Time
+                time_tag = container.select_one("span.feed-shared-actor__subtext, a.feed-shared-actor__subtext-link, .update-components-actor__subtext span")
+                if time_tag:
+                    full_time_text = self._clean_text(time_tag.text)
                     post.posted_at.date = full_time_text.split("•")[0].strip()
                     post.posted_at.relative = full_time_text
 
-                # Link
+                # Link to post
                 links = container.find_all("a", href=True)
                 for link in links:
                     href = link['href']
                     if "linkedin.com/feed/update" in href or "urn:li:activity" in href:
                         post.url = href.split("?")[0]
+                        if not post.url.startswith("http"):
+                             post.url = f"https://www.linkedin.com{post.url}"
                         break
                 
                 # Social Stats
-                social_counts = container.find("ul", class_="social-details-social-counts") or \
-                                container.find("div", class_="social-details-social-activity")
-                
+                social_counts = container.select_one(".social-details-social-counts, .social-details-social-activity, .update-v2-social-counts")
                 if social_counts:
-                    # Likes
-                    likes_li = social_counts.find("span", class_="social-details-social-counts__reactions-count") or \
-                               social_counts.find("button", {"aria-label": lambda x: x and "reaction" in x.lower()}) or \
-                               social_counts.find("span", {"aria-hidden": "true"})
-                    
-                    if likes_li:
-                        likes_text = likes_li.text.strip()
-                        digits = "".join(filter(str.isdigit, likes_text))
+                    # Likes/Reactions
+                    likes_count = social_counts.select_one(".social-details-social-counts__reactions-count, button[aria-label*='reaction'], span[aria-hidden='true']")
+                    if likes_count:
+                        digits = "".join(filter(str.isdigit, likes_count.text))
                         if digits: post.stats.like = int(digits)
 
                     # Comments
-                    comments_li = social_counts.find("button", {"aria-label": lambda x: x and "comment" in x.lower()}) or \
-                                  social_counts.find("li", class_="social-details-social-counts__comments")
-                    if comments_li:
-                         comments_text = comments_li.text.strip()
-                         digits = "".join(filter(str.isdigit, comments_text))
+                    comments_count = social_counts.select_one("button[aria-label*='comment'], .social-details-social-counts__comments")
+                    if comments_count:
+                         digits = "".join(filter(str.isdigit, comments_count.text))
                          if digits: post.stats.comments = int(digits)
 
-                # Images & Media - IMPROVED
+                    # Reposts
+                    reposts_count = social_counts.select_one("button[aria-label*='repost'], .social-details-social-counts__reposts")
+                    if reposts_count:
+                         digits = "".join(filter(str.isdigit, reposts_count.text))
+                         if digits: post.stats.reposts = int(digits)
+
+                # Media Extraction
                 post.media = Media(type="unknown")
                 found_media = []
 
-                # 1. Images (Standard & Delayed)
-                img_tags = container.find_all("img", class_="ivm-view-attr__img--centered") or \
-                           container.find_all("img", class_="update-components-image__image") or \
-                           container.find_all("img", {"data-delayed-url": True}) or \
-                           container.find_all("img", class_="feed-shared-article__image")
-                
+                # Images
+                img_tags = container.select("img.ivm-view-attr__img--centered, img.update-components-image__image, img[data-delayed-url], img.feed-shared-article__image")
                 for img in img_tags:
                     src = img.get("src") or img.get("data-delayed-url")
                     if src and "media.licdn.com" in src:
                         if src not in [x['url'] for x in found_media]:
                             found_media.append({"url": src, "type": "image"})
 
-                # 2. Videos (Native Video Player)
-                # LinkedIn videos are often in <video> tags or <div class="native-video-player">
+                # Videos
                 video_tags = container.find_all("video")
                 for vid in video_tags:
-                    # Try source tag first
-                    src = vid.get("src")
-                    if not src:
-                        source_tag = vid.find("source")
-                        if source_tag: src = source_tag.get("src")
-                    
-                    # If we found a video URL
+                    src = vid.get("src") or (vid.find("source").get("src") if vid.find("source") else None)
                     if src:
                         found_media.append({"url": src, "type": "video"})
                     else:
-                        # Fallback: grab the poster/thumbnail image
                         poster = vid.get("poster") or vid.get("data-poster-url")
                         if poster:
                             found_media.append({"url": poster, "type": "video_thumbnail"})
                 
-                # Assign type based on what we found first/most relevant
                 if any(m['type'] == 'video' for m in found_media):
                     post.media.type = "video"
-                elif any(m['type'] == 'video_thumbnail' for m in found_media):
-                     post.media.type = "video" # It's a video post, but we only got the thumbnail
                 elif found_media:
                     post.media.type = "image"
-                
                 post.media.images = found_media
 
-                # Only filter out empty posts if truly empty
                 if post.text or post.media.images:
                     profile.posts.append(post)
 
@@ -711,33 +901,53 @@ class LinkedInProScraper:
         
         if not url.startswith("http"):
             if "linkedin.com/in/" in url:
-                # Handle cases like "www.linkedin.com/in/name" or "linkedin.com/in/name"
                 url = f"https://{url}"
             else:
-                # Assuming it's just a username
                 url = f"https://www.linkedin.com/in/{url}/"
         
-        print(f"Final Scrape URL: {url}")
+        self._log_debug(f"Starting full scrape for: {url}")
 
-        # Always attempt login (uses saved cookies, skips manual flow if already logged in)
+        # Ensure empty profile setup
+        profile = Profile(linkedinUrl=url)
+
+        # Always attempt login
         self.login_and_save_cookies()
         
+        if not self._is_driver_alive():
+            self._log_debug("Driver died after login attempt.")
+            return profile
+
         # 1. Main Info + Contact Modal
+        self._log_debug("Fetching main profile info...")
         profile = self.get_profile_main(url)
+        if not self._is_driver_alive(): return profile
         
         # 2. Details Pages
+        self._log_debug("Fetching experience...")
         self.get_experience(url, profile)
+        if not self._is_driver_alive(): return profile
+        
+        self._log_debug("Fetching education...")
         self.get_education(url, profile)
+        if not self._is_driver_alive(): return profile
+        
+        self._log_debug("Fetching skills...")
         self.get_skills(url, profile)
+        if not self._is_driver_alive(): return profile
         
         # 2b. New Details Pages
+        self._log_debug("Fetching certifications, projects, languages...")
         self.get_generic_section(url, "certifications", Certification, profile.certifications)
         self.get_generic_section(url, "projects", Project, profile.projects)
         self.get_generic_section(url, "languages", Language, profile.languages)
         
+        if not self._is_driver_alive(): return profile
+
         # 3. Posts
+        self._log_debug("Fetching posts...")
         self.get_posts(url, profile)
         
+        self._log_debug(f"Scrape completed for {profile.fullName}")
         return profile
 
     def close(self):

@@ -82,6 +82,7 @@ def user_stats():
                 <th>GitHub</th>
                 <th>Sync Status</th>
                 <th>Last Seen</th>
+                <th>Action</th>
             </tr>
     """
     
@@ -104,6 +105,9 @@ def user_stats():
                 <td>{u.github_username or '-'}</td>
                 <td class="{sync_class}">{u.github_sync_status or 'Not Started'}</td>
                 <td>{last_seen_str}</td>
+                <td>
+                    <a href="/admin/delete-user/{u.id}" class="btn" onclick="return confirm('Delete this user and all their data?');" style="background:#ef4444; font-size: 0.8em;">Delete</a>
+                </td>
             </tr>
         """
         
@@ -121,6 +125,55 @@ def user_stats():
     </html>
     """
     return render_template_string(html)
+
+@admin_bp.route("/delete-user/<int:user_id>")
+def delete_user(user_id):
+    from app.models import Post
+    import glob
+    user = User.query.get_or_404(user_id)
+    username = user.username
+    
+    try:
+        # 1. Cleanup Files (Avatar & Cover)
+        upload_folder = os.path.join(current_app.root_path, "static", "uploads")
+        
+        # Avatars & Covers (using glob to catch any extension)
+        for folder in ["avatars", "covers"]:
+            pattern = os.path.join(upload_folder, folder, f"{'avatar' if folder=='avatars' else 'cover'}_{user_id}.*")
+            for f in glob.glob(pattern):
+                try:
+                    os.remove(f)
+                except: pass
+
+        # 2. Cleanup Post Media
+        user_posts = Post.query.filter_by(user_id=user_id).all()
+        for post in user_posts:
+            if post.media:
+                for item in post.media:
+                    if "url" in item:
+                        # Extract relative path from /static/uploads/...
+                        rel_path = item["url"].replace("/static/uploads/", "")
+                        abs_path = os.path.join(upload_folder, rel_path.replace("/", os.sep))
+                        if os.path.exists(abs_path):
+                            try:
+                                os.remove(abs_path)
+                            except: pass
+
+        # 3. Cleanup Chat History (Memory)
+        from app.services.chat_state import message_history
+        to_remove = [rid for rid in message_history.keys() if username in rid.split("_")]
+        for rid in to_remove:
+            try: del message_history[rid]
+            except: pass
+
+        # 4. Delete from DB (Cascades will handle related profiles and post records)
+        db.session.delete(user)
+        db.session.commit()
+        
+        return f"<h1>User Deleted</h1><p>User {username} and all associated data (including files) have been removed.</p><p><a href='/admin/users'>Back to Admin</a></p>"
+    except Exception as e:
+        db.session.rollback()
+        return f"<h1>Error</h1><p>{str(e)}</p>"
 
 @admin_bp.route("/reset-db-force")
 def reset_db_force():
@@ -160,7 +213,12 @@ def reset_db_force():
                 # Delete all rows from known tables
                 db.session.execute(text("DELETE FROM posts"))
                 db.session.execute(text("DELETE FROM github_profiles"))
+                db.session.execute(text("DELETE FROM linkedin_profiles"))
                 db.session.execute(text("DELETE FROM users"))
+                
+                # Clear chat in memory
+                from app.services.chat_state import message_history
+                message_history.clear()
                 
                 db.session.commit()
                 deleted.append("Executed SQL DELETE on all tables")

@@ -22,6 +22,12 @@ def sync_all_cp_stats(user):
             if data and "error" not in data:
                 user.leetcode_data = data
                 updated = True
+                db.session.commit() # Save immediately
+                try:
+                    from app import socketio
+                    socketio.emit("sync_complete", {"type": "stats_partial", "platform": "leetcode", "user_id": user.id})
+                except Exception:
+                    pass
         except Exception as e:
             print(f"LeetCode sync error for {user.username}: {e}")
 
@@ -33,6 +39,12 @@ def sync_all_cp_stats(user):
             if data and "error" not in data:
                 user.codeforces_data = data
                 updated = True
+                db.session.commit() # Save immediately
+                try:
+                    from app import socketio
+                    socketio.emit("sync_complete", {"type": "stats_partial", "platform": "codeforces", "user_id": user.id})
+                except Exception:
+                    pass
         except Exception as e:
             print(f"CodeForces sync error for {user.username}: {e}")
 
@@ -44,6 +56,12 @@ def sync_all_cp_stats(user):
             if data and "error" not in data:
                 user.codechef_data = data
                 updated = True
+                db.session.commit() # Save immediately
+                try:
+                    from app import socketio
+                    socketio.emit("sync_complete", {"type": "stats_partial", "platform": "codechef", "user_id": user.id})
+                except Exception:
+                    pass
         except Exception as e:
             print(f"CodeChef sync error for {user.username}: {e}")
 
@@ -55,10 +73,26 @@ def sync_all_cp_stats(user):
             if data and "error" not in data:
                 user.hackerrank_data = data
                 updated = True
+                db.session.commit() # Save immediately
+                try:
+                    from app import socketio
+                    socketio.emit("sync_complete", {"type": "stats_partial", "platform": "hackerrank", "user_id": user.id})
+                except Exception:
+                    pass
         except Exception as e:
             print(f"HackerRank sync error for {user.username}: {e}")
 
+    # Always update sync timestamp to prevent infinite loops on page load
+    user.last_stats_sync = datetime.utcnow()
+    db.session.commit()
+
     if updated:
-        user.last_stats_sync = datetime.utcnow()
-        db.session.commit()
         print(f"All CP stats updated for {user.username}")
+        # 🔔 Notify client via SocketIO
+        from app import socketio
+        socketio.emit("sync_complete", {"type": "stats", "user_id": user.id})
+    else:
+        print(f"Sync attempt finished for {user.username} (no changes)")
+        # Still notify to stop any loading spinners
+        from app import socketio
+        socketio.emit("sync_complete", {"type": "stats_no_change", "user_id": user.id})

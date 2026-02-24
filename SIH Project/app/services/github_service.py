@@ -15,10 +15,10 @@ HEADERS = {
     "Accept": "application/vnd.github+json"
 }
 
-def _get(url, params=None):
+def _get(url, params=None, retries=1):
     try:
-        # TIMEOUT ADDED to prevent hanging
-        r = requests.get(url, headers=HEADERS, params=params, timeout=10)
+        # INCREASED TIMEOUT to 30s to prevent ReadTimeout errors for larger profiles
+        r = requests.get(url, headers=HEADERS, params=params, timeout=30)
         
         if r.status_code != 200:
             with open("debug_sync.txt", "a") as f:
@@ -26,6 +26,13 @@ def _get(url, params=None):
             raise RuntimeError(f"GitHub API failed: {url} | {r.status_code}")
             
         return r.json(), r.headers
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        if retries > 0:
+            print(f"GitHub request timed out. Retrying... ({url})")
+            import time
+            time.sleep(2)
+            return _get(url, params, retries - 1)
+        raise e
     except Exception as e:
         with open("debug_sync.txt", "a") as f:
             f.write(f"Network/Code Error: {str(e)}\n")

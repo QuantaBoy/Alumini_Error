@@ -104,20 +104,27 @@
                         </a>
                         <!-- Resync Buttons -->
                         {% if user.linkedin_url %}
-                        <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-primary-custom"
+                        <a href="{{ url_for('profile.resync_linkedin') }}" data-resync="linkedin"
+                            class="btn-primary-custom {{ 'disabled' if user.linkedin_sync_status == 'pending' }}"
                             title="Resync LinkedIn">
+                            {% if user.linkedin_sync_status == 'pending' %}
+                            <i class="fas fa-spinner fa-spin"></i> Syncing
+                            {% else %}
                             <i class="fas fa-sync-alt"></i> LinkedIn
+                            {% endif %}
                         </a>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="info-right">
-                    <!-- Education Logos (Mockup or real if available) -->
+                    <!-- Education Logos (Dynamic) -->
+                    {% if linkedin and linkedin.education and linkedin.education|length > 0 %}
                     <div class="institution-logo">
                         <span style="font-size: 2rem; color: #1a237e;"><i class="fas fa-university"></i></span>
-                        <div>Chennai Institute of Technology</div>
+                        <div>{{ linkedin.education[0].schoolName }}</div>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -128,9 +135,13 @@
             {% if linkedin and linkedin.about %}
             <div class="about-text">{{ linkedin.about }}</div>
             {% else %}
-            <div class="about-text about-empty">
+            <div class="about-text about-empty" id="linkedin-about-message">
                 <i class="fab fa-linkedin" style="color:#0a66c2; margin-right:8px;"></i>
+                {% if user.linkedin_sync_status == 'pending' %}
+                Syncing LinkedIn...
+                {% else %}
                 No about information yet. Sync your LinkedIn profile to display your bio here.
+                {% endif %}
             </div>
             {% endif %}
         </div>
@@ -273,10 +284,10 @@
                                 {% if hackerrank.badges %}
                                 <div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:4px;">
                                     {% for b in hackerrank.badges[:4] %}
-                                    <span title="{{ b.badge_name }} — Solved: {{ b.solved }}" style="background:#e8f5e9; color:#2e7d32; font-size:0.72rem;
+                                    <span title="{{ b.badge_name }} â€” Solved: {{ b.solved }}" style="background:#e8f5e9; color:#2e7d32; font-size:0.72rem;
                                                  border-radius:10px; padding:2px 7px; white-space:nowrap;">
-                                        {{ b.badge_name | truncate(14, True, '…') }}
-                                        {% for _ in range(b.stars) %}⭐{% endfor %}
+                                        {{ b.badge_name | truncate(14, True, 'â€¦') }}
+                                        {% for _ in range(b.stars) %}â­{% endfor %}
                                     </span>
                                     {% endfor %}
                                 </div>
@@ -356,11 +367,25 @@
                         View All Posts on LinkedIn
                     </a>
                     {% else %}
-                    <div class="post-card" style="text-align: center; padding: 40px; color: #666;">
-                        <i class="fab fa-linkedin" style="font-size: 3rem; color: #0077b5; margin-bottom: 15px;"></i>
-                        <p>No recent posts found. Resync your LinkedIn profile to fetch activity.</p>
-                        <a href="{{ url_for('profile.resync_linkedin') }}" class="btn-primary"
-                            style="margin-top: 10px; display: inline-block;">Sync Now</a>
+                    <div class="post-card" style="text-align:center; padding:40px; color:#aaa;">
+                        <i class="fab fa-linkedin"
+                            style="font-size:2rem; margin-bottom:10px; display:block; color: #0077b5;"></i>
+                        <p id="linkedin-posts-message" style="font-size:0.85rem; margin-bottom: 10px;">
+                            {% if user.linkedin_sync_status == 'pending' %}
+                            Syncing LinkedIn...
+                            {% else %}
+                            No recent posts found. Resync your LinkedIn profile to fetch activity.
+                            {% endif %}
+                        </p>
+                        <a href="{{ url_for('profile.resync_linkedin') }}" data-resync="linkedin"
+                            class="btn-primary {{ 'disabled' if user.linkedin_sync_status == 'pending' }}"
+                            style="margin-top: 10px; display: inline-block;">
+                            {% if user.linkedin_sync_status == 'pending' %}
+                            <i class="fas fa-spinner fa-spin"></i> Syncing...
+                            {% else %}
+                            Sync Now
+                            {% endif %}
+                        </a>
                     </div>
                     {% endif %}
                 </div>
@@ -406,8 +431,7 @@
                             <div class="item-content">
                                 <h3>{{ edu.schoolName }}</h3>
                                 <p class="item-subtitle">{{ edu.degreeName }} {% if edu.fieldOfStudy %}, {{
-                                    edu.fieldOfStudy
-                                    }}{% endif %}</p>
+                                    edu.fieldOfStudy }}{% endif %}</p>
                                 <p class="item-meta">{{ edu.startDate }} - {{ edu.endDate }}</p>
                             </div>
                         </div>
@@ -470,7 +494,13 @@
                     <!-- Empty state -->
                     <div style="text-align:center; padding:30px 0; color:#aaa;">
                         <i class="fab fa-github" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
-                        <span style="font-size:0.85rem;">Sync GitHub to see language skills.</span>
+                        <span style="font-size:0.85rem;">
+                            {% if user.github_sync_status == 'pending' %}
+                            Syncing GitHub...
+                            {% else %}
+                            Sync GitHub to see language skills.
+                            {% endif %}
+                        </span>
                     </div>
                     {% endif %}
                 </div>
@@ -591,98 +621,180 @@
                 </div>
 
                 <!-- 2. Post Analytics (single unified card) -->
-                <div class="profile-card card-padding">
-                    <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 15px;">Post Analytics</h3>
+                <div id="post-analytics-container">
+                    {% if linkedin and linkedin.posts %}
+                    <div id="post-analytics-content" class="profile-card card-padding">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 4px;">Post Analytics</h3>
 
-                    <!-- Engagement Rate graph -->
-                    <div class="analytics-graph" style="margin-bottom: 16px;">
-                        <div class="graph-title">Engagement Rate</div>
-                        <div class="graph-value">{{ analytics.get('engagement_rate', 0) }}%</div>
+                        <!-- Content Tier Badge -->
+                        <div style="margin-bottom: 14px;">
+                            {% set tier = analytics.get('content_tier', 'No Data') %}
+                            {% if tier == 'Thought Leader' %}
+                            {% set tier_color = '#7c3aed' %}{% set tier_icon = 'fa-crown' %}
+                            {% elif tier == 'High Influencer' %}
+                            {% set tier_color = '#0a66c2' %}{% set tier_icon = 'fa-bolt' %}
+                            {% elif tier == 'Active Creator' %}
+                            {% set tier_color = '#16a34a' %}{% set tier_icon = 'fa-pen-nib' %}
+                            {% elif tier == 'Growing Voice' %}
+                            {% set tier_color = '#ea580c' %}{% set tier_icon = 'fa-seedling' %}
+                            {% else %}
+                            {% set tier_color = '#6b7280' %}{% set tier_icon = 'fa-star' %}
+                            {% endif %}
+                            <span style="display:inline-flex; align-items:center; gap:6px; background:{{ tier_color }}18;
+                                         color:{{ tier_color }}; font-size:0.78rem; font-weight:600;
+                                         padding:4px 10px; border-radius:20px; border:1px solid {{ tier_color }}44;">
+                                <i class="fas {{ tier_icon }}"></i> {{ tier }}
+                            </span>
+                            <span style="float:right; font-size:0.72rem; color:#999; margin-top:4px;">
+                                {{ analytics.get('total_posts', 0) }} posts analysed
+                            </span>
+                        </div>
 
-                        <!-- Simple CSS Bar Graph -->
-                        <div class="graph-line-container">
-                            <div class="graph-point" style="height: 20%;"></div>
-                            <div class="graph-point" style="height: 35%;"></div>
-                            <div class="graph-point" style="height: 30%;"></div>
-                            <div class="graph-point" style="height: 50%;"></div>
-                            <div class="graph-point" style="height: 45%;"></div>
-                            <div class="graph-point" style="height: 70%;"></div>
-                            <div class="graph-point" style="height: 80%;"></div>
-                            <div class="graph-point" style="height: 100%;"></div>
+                        <!-- Engagement Rate bar -->
+                        <div class="analytics-graph" style="margin-bottom: 16px;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span class="graph-title">Engagement Rate</span>
+                                <span id="analytics-engagement"
+                                    style="font-size:1.1rem; font-weight:700; color:#0a66c2;">
+                                    {{ analytics.get('engagement_rate', 0) }}%
+                                </span>
+                            </div>
+                            <div style="background:#e5e7eb; border-radius:4px; height:6px; width:100%;">
+                                <div style="background:linear-gradient(90deg,#0a66c2,#7c3aed);
+                                            width:{{ [analytics.get('engagement_rate', 0) * 10, 100] | min }}%;
+                                            height:6px; border-radius:4px; transition:width 0.6s;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Virality Score bar -->
+                        <div style="margin-bottom: 16px;">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span class="graph-title">Virality Score</span>
+                                <span style="font-size:1.1rem; font-weight:700; color:#16a34a;">
+                                    {{ analytics.get('virality_score', 0) }}<span
+                                        style="font-size:0.72rem;font-weight:400;color:#999;">/10</span>
+                                </span>
+                            </div>
+                            <div style="background:#e5e7eb; border-radius:4px; height:6px; width:100%;">
+                                <div style="background:linear-gradient(90deg,#16a34a,#06b6d4);
+                                            width:{{ analytics.get('virality_score', 0) * 10 }}%;
+                                            height:6px; border-radius:4px; transition:width 0.6s;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Totals row -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:14px;">
+                            <div style="text-align:center; background:#f8fafc; border-radius:10px; padding:10px 6px;">
+                                <div style="font-size:1.15rem; font-weight:700; color:#e11d48;">{{
+                                    analytics.get('likes', 0) }}</div>
+                                <div style="font-size:0.7rem; color:#888; margin-top:2px;"><i class="fas fa-heart"></i>
+                                    Likes</div>
+                            </div>
+                            <div style="text-align:center; background:#f8fafc; border-radius:10px; padding:10px 6px;">
+                                <div style="font-size:1.15rem; font-weight:700; color:#0a66c2;">{{
+                                    analytics.get('comments', 0) }}</div>
+                                <div style="font-size:0.7rem; color:#888; margin-top:2px;"><i
+                                        class="fas fa-comment-dots"></i> Comments</div>
+                            </div>
+                            <div style="text-align:center; background:#f8fafc; border-radius:10px; padding:10px 6px;">
+                                <div style="font-size:1.15rem; font-weight:700; color:#7c3aed;">{{
+                                    analytics.get('shares', 0) }}</div>
+                                <div style="font-size:0.7rem; color:#888; margin-top:2px;"><i class="fas fa-share"></i>
+                                    Shares</div>
+                            </div>
+                        </div>
+
+                        <!-- Averages per post -->
+                        <div
+                            style="font-size:0.72rem; color:#888; margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">
+                            Avg. per post
+                        </div>
+                        <div class="analytics-stat-row">
+                            <div class="stat-icon-circle icon-heart"><i class="fas fa-heart"></i></div>
+                            <span class="analytics-label">Avg Likes</span>
+                            <span class="analytics-val">{{ analytics.get('avg_likes', 0) }}</span>
+                        </div>
+                        <div class="analytics-stat-row">
+                            <div class="stat-icon-circle icon-comment"><i class="fas fa-comment-dots"></i></div>
+                            <span class="analytics-label">Avg Comments</span>
+                            <span class="analytics-val">{{ analytics.get('avg_comments', 0) }}</span>
+                        </div>
+                        <div class="analytics-stat-row">
+                            <div class="stat-icon-circle icon-share"><i class="fas fa-share"></i></div>
+                            <span class="analytics-label">Avg Shares</span>
+                            <span class="analytics-val">{{ analytics.get('avg_shares', 0) }}</span>
+                        </div>
+
+                        <!-- Impressions & Reach -->
+                        <div
+                            style="font-size:0.72rem; color:#888; margin:12px 0 6px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">
+                            Estimated Reach
+                        </div>
+                        <div class="analytics-stat-row">
+                            <div class="stat-icon-circle icon-eye"><i class="fas fa-eye"></i></div>
+                            <span class="analytics-label">Impressions</span>
+                            <span id="analytics-impressions" class="analytics-val">{{ analytics.get('impressions', 0) |
+                                int }}</span>
+                        </div>
+                        <div class="analytics-stat-row" style="margin-bottom:12px;">
+                            <div class="stat-icon-circle icon-reach"><i class="fas fa-users"></i></div>
+                            <span class="analytics-label">Reach</span>
+                            <span id="analytics-reach" class="analytics-val">{{ analytics.get('reach', 0) }}</span>
+                        </div>
+
+                        <!-- Top Post -->
+                        {% if analytics.get('top_post_text') %}
+                        <div style="background:#f0f7ff; border-left:3px solid #0a66c2; border-radius:0 8px 8px 0;
+                                    padding:8px 10px; margin-top:4px;">
+                            <div style="font-size:0.7rem; color:#0a66c2; font-weight:700; margin-bottom:4px;">
+                                🏆 Top Post &nbsp;<span style="color:#555; font-weight:400;">{{
+                                    analytics.get('top_post_likes', 0) }} likes</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#374151; line-height:1.4;">
+                                {{ analytics.get('top_post_text', '') }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div id="post-analytics-empty" class="profile-card card-padding">
+                        <h3 class="section-title" style="font-size: 1.1rem; margin-bottom: 15px;">Post Analytics</h3>
+                        <div style="text-align:center; padding: 30px; color:#aaa;">
+                            <i class="fab fa-linkedin"
+                                style="font-size:2rem; margin-bottom:10px; display:block; color: #0077b5;"></i>
+                            <p id="linkedin-analytics-message" style="font-size:0.85rem; margin-bottom: 10px;">
+                                {% if user.linkedin_sync_status == 'pending' %}
+                                Syncing LinkedIn...
+                                {% else %}
+                                No post activity yet. Sync your LinkedIn posts to see analytics here.
+                                {% endif %}
+                            </p>
+                            {% if user.linkedin_url %}
+                            <a href="{{ url_for('profile.resync_linkedin') }}" data-resync="linkedin"
+                                class="btn-primary {{ 'disabled' if user.linkedin_sync_status == 'pending' }}"
+                                style="margin-top:8px; display: inline-block;">
+                                {% if user.linkedin_sync_status == 'pending' %}
+                                <i class="fas fa-spinner fa-spin"></i> Syncing...
+                                {% else %}
+                                Sync Now
+                                {% endif %}
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
-
-                    <!-- Stat rows — inside the same card -->
-                    <div class="analytics-stat-row">
-                        <div class="stat-icon-circle icon-heart"><i class="fas fa-heart"></i></div>
-                        <span class="analytics-label">Total Likes</span>
-                        <span class="analytics-val">{{ analytics.get('likes', 0) }}</span>
-                    </div>
-
-                    <div class="analytics-stat-row">
-                        <div class="stat-icon-circle icon-comment"><i class="fas fa-comment-dots"></i></div>
-                        <span class="analytics-label">Comments</span>
-                        <span class="analytics-val">{{ analytics.get('comments', 0) }}</span>
-                    </div>
-
-                    <div class="analytics-stat-row">
-                        <div class="stat-icon-circle icon-share"><i class="fas fa-share"></i></div>
-                        <span class="analytics-label">Total Share</span>
-                        <span class="analytics-val">{{ analytics.get('shares', 0) }}</span>
-                    </div>
-
-                    <div class="analytics-stat-row">
-                        <div class="stat-icon-circle icon-eye"><i class="fas fa-eye"></i></div>
-                        <span class="analytics-label">Impressions</span>
-                        <span class="analytics-val">{{ analytics.get('impressions', 0) }}</span>
-                    </div>
-
-                    <div class="analytics-stat-row" style="margin-bottom: 0;">
-                        <div class="stat-icon-circle icon-reach"><i class="fas fa-users"></i></div>
-                        <span class="analytics-label">Reach</span>
-                        <span class="analytics-val">{{ analytics.get('reach', 0) }}</span>
-                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Suggested People -->
                 <div class="profile-card card-padding">
                     <h3 class="section-title" style="font-size: 1rem;">Suggested For You</h3>
 
-                    <!-- Mockup Suggestions -->
-                    <div class="suggestion-item">
-                        <div class="sugg-user">
-                            <img src="https://ui-avatars.com/api/?name=Tom+R&background=FFC107&color=fff"
-                                class="sugg-img" />
-                            <div class="sugg-info">
-                                <h4>Tom</h4>
-                                <p>Suggested for you</p>
-                            </div>
-                        </div>
-                        <button class="btn-connect-sm">Connect</button>
-                    </div>
-
-                    <div class="suggestion-item">
-                        <div class="sugg-user">
-                            <img src="https://ui-avatars.com/api/?name=Keny+D&background=E91E63&color=fff"
-                                class="sugg-img" />
-                            <div class="sugg-info">
-                                <h4>Keny</h4>
-                                <p>Suggested for you</p>
-                            </div>
-                        </div>
-                        <button class="btn-connect-sm">Connect</button>
-                    </div>
-
-                    <div class="suggestion-item">
-                        <div class="sugg-user">
-                            <img src="https://ui-avatars.com/api/?name=Tara+S&background=9C27B0&color=fff"
-                                class="sugg-img" />
-                            <div class="sugg-info">
-                                <h4>Tara</h4>
-                                <p>Followed by mobee</p>
-                            </div>
-                        </div>
-                        <button class="btn-connect-sm">Connect</button>
+                    <!-- Empty state or dynamic content would go here -->
+                    <div style="text-align:center; padding:20px; color:#aaa; font-size:0.85rem;">
+                        <i class="fas fa-user-plus" style="font-size:1.5rem; margin-bottom:8px; display:block;"></i>
+                        <span>No suggestions at the moment.</span>
                     </div>
 
                 </div>
@@ -691,7 +803,70 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const currentUserId = {{ user.id | tojson }};
+        const socket = io();
+        socket.on('sync_complete', function (data) {
+            // Check if the sync is for the current user
+            if (data.user_id == currentUserId) {
+                console.log("Data sync complete:", data.type);
+                // Auto refresh on any sync completion
+                location.reload();
+            }
+        });
+    </script>
     <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
+    <script>
+        // Intercept LinkedIn resync links (data-resync="linkedin") and call endpoint via AJAX
+        document.addEventListener('click', function (e) {
+            const a = e.target.closest && e.target.closest('a[data-resync]');
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href) return;
+            // Only handle linkedin resync
+            if (a.dataset.resync !== 'linkedin') return;
+
+            e.preventDefault();
+            // Disable the button briefly
+            a.classList.add('disabled');
+            a.dataset.original = a.innerHTML;
+            a.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing';
+
+            // Also update the empty state messages if they exist
+            ['linkedin-about-message', 'linkedin-posts-message', 'linkedin-analytics-message'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (id === 'linkedin-about-message') {
+                        el.innerHTML = '<i class="fab fa-linkedin" style="color:#0a66c2; margin-right:8px;"></i> Syncing LinkedIn...';
+                    } else {
+                        el.innerText = 'Syncing LinkedIn...';
+                    }
+                }
+            });
+
+            fetch(href, { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(res => res.json())
+                .then(json => {
+                    // show brief toast
+                    try {
+                        const t = document.createElement('div');
+                        t.textContent = json.message || 'LinkedIn sync started';
+                        t.style = 'position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:10px 12px;border-radius:6px;z-index:9999;';
+                        document.body.appendChild(t);
+                        setTimeout(() => t.remove(), 3000);
+                    } catch (err) { }
+                })
+                .catch(err => {
+                    console.error('Resync request failed', err);
+                    location.href = href; // fallback to normal nav
+                })
+                .finally(() => {
+                    a.classList.remove('disabled');
+                    if (a.dataset.original) a.innerHTML = a.dataset.original;
+                });
+        });
+    </script>
     <script>
         // Simple logic to toggle the dropdown
         const profileContainer = document.getElementById('navProfileContainer');
