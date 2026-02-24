@@ -157,54 +157,70 @@ class LinkedInProScraper:
         self.driver = self._setup_driver(use_proxy, proxy_string)
 
     def _setup_driver(self, use_proxy, proxy_string):
-        options = uc.ChromeOptions()
-        
-        # Stability Flags for Undetected Chromedriver
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--no-first-run")
-        options.add_argument("--disable-notifications")
-        options.add_argument("--disable-popup-blocking")
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-setuid-sandbox")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--ignore-certificate-errors")
-        
-        # Local user data directory to avoid path/permission issues on Windows
-        import uuid
-        user_data_dir = os.path.abspath(os.path.join(os.getcwd(), ".uc_profile"))
-        if not os.path.exists(user_data_dir):
-            os.makedirs(user_data_dir, exist_ok=True)
-        options.add_argument(f"--user-data-dir={user_data_dir}")
-
-        # NOTE: LinkedIn heavily restricts headless browsers on feed/activity pages.
-        # We run in a visible window by default. Set LINKEDIN_HEADFUL=1 to keep it visible intentionally.
-        # Headless mode is intentionally disabled to avoid being blocked by LinkedIn.
-        options.add_argument("--window-size=1920,1080")
-        options.add_argument("--disable-dev-shm-usage")
-        # NOTE: Do NOT disable images - LinkedIn's feed needs images enabled to render JS properly
-
-        if use_proxy and proxy_string:
-            print(f"Configuring Proxy: {proxy_string}")
-            options.add_argument(f'--proxy-server={proxy_string}')
-
         max_startup_retries = 2
+
+        # Find if an already-cached chromedriver.exe exists in AppData to avoid
+        # network download (which fails when internet is down/slow).
+        cached_driver_path = None
+        try:
+            appdata = os.environ.get("APPDATA", "")
+            candidate = os.path.join(appdata, "undetected_chromedriver", "undetected_chromedriver.exe")
+            if os.path.exists(candidate):
+                cached_driver_path = candidate
+        except Exception:
+            pass
+
         for i in range(max_startup_retries):
+            # IMPORTANT: Recreate ChromeOptions fresh on EVERY retry.
+            # undetected_chromedriver raises "you cannot reuse the ChromeOptions object"
+            # if the same options instance is passed on a second attempt.
+            options = uc.ChromeOptions()
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--no-first-run")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-popup-blocking")
+            options.add_argument("--start-maximized")
+            options.add_argument("--disable-setuid-sandbox")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--ignore-certificate-errors")
+            options.add_argument("--window-size=1920,1080")
+            # NOTE: Do NOT disable images - LinkedIn needs images enabled to render JS properly
+
+            user_data_dir = os.path.abspath(os.path.join(os.getcwd(), ".uc_profile"))
+            os.makedirs(user_data_dir, exist_ok=True)
+            options.add_argument(f"--user-data-dir={user_data_dir}")
+
+            if use_proxy and proxy_string:
+                print(f"Configuring Proxy: {proxy_string}")
+                options.add_argument(f'--proxy-server={proxy_string}')
+
             try:
-                # Cleanup zombie processes on Windows
-                if os.name == 'nt' and i == 0:
-                    try: os.system("taskkill /f /im chromedriver.exe /t >nul 2>&1")
-                    except: pass
+                # Kill zombie processes on Windows before each attempt
+                if os.name == 'nt':
+                    try:
+                        os.system("taskkill /f /im chromedriver.exe /t >nul 2>&1")
+                        os.system("taskkill /f /im chrome.exe /t >nul 2>&1")
+                    except Exception:
+                        pass
 
                 self._log_debug(f"Starting uc.Chrome (Attempt {i+1})...")
-                driver = uc.Chrome(options=options, version_main=None)
-                
-                # Critical: wait for browser to fully initialize
+
+                if cached_driver_path:
+                    # Use the locally cached chromedriver — avoids any network call
+                    self._log_debug(f"Using cached chromedriver at: {cached_driver_path}")
+                    driver = uc.Chrome(options=options, driver_executable_path=cached_driver_path)
+                else:
+                    # Fall back: uc will auto-download (requires internet)
+                    self._log_debug("No cached chromedriver found, attempting auto-download...")
+                    driver = uc.Chrome(options=options, version_main=None)
+
+                # Wait for browser to fully initialize
                 time.sleep(5)
-                
-                # Quick check if it's responsive
+
+                # Quick responsiveness check
                 _ = driver.current_url
                 self._log_debug("Chrome initialized successfully.")
                 return driver
